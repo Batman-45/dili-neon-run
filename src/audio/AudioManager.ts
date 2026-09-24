@@ -12,6 +12,15 @@ export class AudioManager {
   private lastBitPickupTime: number = 0;
   private readonly pentatonicScale = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5]; // C5, D5, E5, G5, A5, C6
 
+  // In-Game Procedural BGM
+  private bgmSource: AudioBufferSourceNode | null = null;
+  private bgmGain: GainNode | null = null;
+  private bgmBuffer: AudioBuffer | null = null;
+  private bgmStartTime: number = 0;
+  private bgmPlaybackOffset: number = 0;
+  private isBgmPlaying: boolean = false;
+  private readonly bgmTargetGain: number = 0.22;
+
   constructor() {}
 
   private ensureContext(): AudioContext | null {
@@ -509,5 +518,303 @@ export class AudioManager {
       this.ctx.resume().catch(() => {});
     }
   }
+
+  // ==========================================
+  // IN-GAME PROCEDURAL SYNTHWAVE BGM
+  // ==========================================
+
+  /**
+   * Starts playing the in-game procedural synthwave BGM with a smooth ~0.4s fade-in.
+   */
+  public startInGameBGM(): void {
+    const ctx = this.ensureContext();
+    if (!ctx || !this.masterGain) return;
+
+    // 1. Generate procedural buffer once and cache
+    if (!this.bgmBuffer) {
+      this.bgmBuffer = this.generateBgmBuffer(ctx);
+    }
+
+    // 2. Stop any existing source cleanly
+    this.stopBgmSource();
+
+    // 3. Ensure BGM gain node connected to masterGain
+    if (!this.bgmGain) {
+      this.bgmGain = ctx.createGain();
+      this.bgmGain.connect(this.masterGain);
+    }
+
+    // 4. Create and start new buffer source node
+    this.bgmSource = ctx.createBufferSource();
+    this.bgmSource.buffer = this.bgmBuffer;
+    this.bgmSource.loop = true;
+    this.bgmSource.connect(this.bgmGain);
+
+    const now = ctx.currentTime;
+    this.bgmStartTime = now;
+    this.bgmPlaybackOffset = 0;
+    this.isBgmPlaying = true;
+
+    // Smooth ~0.4s fade-in to target gain
+    this.bgmGain.gain.setValueAtTime(0, now);
+    this.bgmGain.gain.linearRampToValueAtTime(this.bgmTargetGain, now + 0.4);
+
+    this.bgmSource.start(now, 0);
+  }
+
+  /**
+   * Pauses in-game BGM by capturing current playback offset and disconnecting source.
+   */
+  public pauseInGameBGM(): void {
+    if (!this.isBgmPlaying || !this.bgmSource || !this.bgmGain || !this.ctx || !this.bgmBuffer) return;
+
+    const now = this.ctx.currentTime;
+    const elapsed = Math.max(0, now - this.bgmStartTime);
+    this.bgmPlaybackOffset = elapsed % this.bgmBuffer.duration;
+    this.isBgmPlaying = false;
+
+    // Fast ramp to 0 to prevent clicks
+    this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, now);
+    this.bgmGain.gain.linearRampToValueAtTime(0, now + 0.06);
+
+    const src = this.bgmSource;
+    setTimeout(() => {
+      try { src.stop(); } catch (_) {}
+      try { src.disconnect(); } catch (_) {}
+    }, 80);
+    this.bgmSource = null;
+  }
+
+  /**
+   * Resumes in-game BGM from the saved musical offset with a smooth gain ramp.
+   */
+  public resumeInGameBGM(): void {
+    const ctx = this.ensureContext();
+    if (!ctx || !this.masterGain || !this.bgmBuffer || this.isBgmPlaying) return;
+
+    this.stopBgmSource();
+
+    if (!this.bgmGain) {
+      this.bgmGain = ctx.createGain();
+      this.bgmGain.connect(this.masterGain);
+    }
+
+    this.bgmSource = ctx.createBufferSource();
+    this.bgmSource.buffer = this.bgmBuffer;
+    this.bgmSource.loop = true;
+    this.bgmSource.connect(this.bgmGain);
+
+    const now = ctx.currentTime;
+    this.bgmStartTime = now - this.bgmPlaybackOffset;
+    this.isBgmPlaying = true;
+
+    // Smoothly ramp back up to target gain in ~0.25s
+    this.bgmGain.gain.setValueAtTime(0, now);
+    this.bgmGain.gain.linearRampToValueAtTime(this.bgmTargetGain, now + 0.25);
+
+    this.bgmSource.start(now, this.bgmPlaybackOffset);
+  }
+
+  /**
+   * Fades out and cleanly stops the in-game BGM.
+   */
+  public stopInGameBGM(fadeDuration: number = 0.3): void {
+    this.isBgmPlaying = false;
+    this.bgmPlaybackOffset = 0;
+
+    if (!this.bgmSource || !this.bgmGain || !this.ctx) {
+      this.stopBgmSource();
+      return;
+    }
+
+    const now = this.ctx.currentTime;
+    this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, now);
+    this.bgmGain.gain.linearRampToValueAtTime(0, now + fadeDuration);
+
+    const src = this.bgmSource;
+    setTimeout(() => {
+      try { src.stop(); } catch (_) {}
+      try { src.disconnect(); } catch (_) {}
+    }, Math.round(fadeDuration * 1000) + 50);
+    this.bgmSource = null;
+  }
+
+  private stopBgmSource(): void {
+    if (this.bgmSource) {
+      try { this.bgmSource.stop(); } catch (_) {}
+      try { this.bgmSource.disconnect(); } catch (_) {}
+      this.bgmSource = null;
+    }
+  }
+
+  /**
+   * Generates a 4-bar driving cyberpunk synthwave loop (126 BPM, D minor)
+   * into a stereo AudioBuffer. Pre-rendered once and cached.
+   */
+  private generateBgmBuffer(ctx: AudioContext): AudioBuffer {
+    const bpm = 126;
+    const beats = 16; // 4 bars of 4/4
+    const sampleRate = ctx.sampleRate;
+    const loopDuration = beats * (60 / bpm);
+    const totalFrames = Math.round(loopDuration * sampleRate);
+    const actualDuration = totalFrames / sampleRate;
+
+    const buffer = ctx.createBuffer(2, totalFrames, sampleRate);
+    const left = buffer.getChannelData(0);
+    const right = buffer.getChannelData(1);
+
+    const beatSec = actualDuration / beats;
+    const stepSec = beatSec / 4; // 16th note
+
+    // --- 1. KICK DRUM (Four-on-the-floor: beats 0..15) ---
+    for (let b = 0; b < beats; b++) {
+      const startFrame = Math.round(b * beatSec * sampleRate);
+      const kickLen = Math.round(0.16 * sampleRate);
+      let phase = 0;
+      for (let i = 0; i < kickLen && startFrame + i < totalFrames; i++) {
+        const t = i / sampleRate;
+        const freq = 135 * Math.exp(-t * 26) + 44;
+        phase += (2 * Math.PI * freq) / sampleRate;
+        const env = Math.max(0, 1 - t / 0.16) * Math.exp(-t * 14) * 0.52;
+        const sample = Math.sin(phase) * env;
+        left[startFrame + i] += sample;
+        right[startFrame + i] += sample;
+      }
+    }
+
+    // --- 2. SNARE / CLAP (Backbeats: beats 2, 6, 10, 14) ---
+    const snareBeats = [2, 6, 10, 14];
+    for (const b of snareBeats) {
+      const startFrame = Math.round(b * beatSec * sampleRate);
+      const snareLen = Math.round(0.18 * sampleRate);
+      let phase = 0;
+      for (let i = 0; i < snareLen && startFrame + i < totalFrames; i++) {
+        const t = i / sampleRate;
+        const toneFreq = 185 * Math.exp(-t * 20) + 70;
+        phase += (2 * Math.PI * toneFreq) / sampleRate;
+        const toneEnv = Math.exp(-t * 22) * 0.28;
+        const noiseEnv = Math.exp(-t * 18) * 0.26;
+        const noiseL = (Math.random() * 2 - 1) * noiseEnv;
+        const noiseR = (Math.random() * 2 - 1) * noiseEnv;
+        const tone = Math.sin(phase) * toneEnv;
+        left[startFrame + i] += tone + noiseL;
+        right[startFrame + i] += tone + noiseR;
+      }
+    }
+
+    // --- 3. CLOSED HI-HAT (Off-beat 8ths) ---
+    for (let b = 0; b < beats; b++) {
+      const startFrame = Math.round((b + 0.5) * beatSec * sampleRate);
+      const hatLen = Math.round(0.04 * sampleRate);
+      for (let i = 0; i < hatLen && startFrame + i < totalFrames; i++) {
+        const t = i / sampleRate;
+        const env = Math.exp(-t * 85) * 0.12;
+        left[startFrame + i] += (Math.random() * 2 - 1) * env;
+        right[startFrame + i] += (Math.random() * 2 - 1) * env;
+      }
+    }
+
+    // --- 4. ROLLING 16TH-NOTE BASSLINE (D-minor progression) ---
+    const bassNotes: number[] = [];
+    for (let s = 0; s < 64; s++) {
+      if (s < 12) bassNotes.push(73.42); // D2
+      else if (s < 14) bassNotes.push(87.31); // F2
+      else if (s < 16) bassNotes.push(98.00); // G2
+      else if (s < 24) bassNotes.push(73.42); // D2
+      else if (s < 28) bassNotes.push(87.31); // F2
+      else if (s < 32) bassNotes.push(73.42); // D2
+      else if (s < 40) bassNotes.push(98.00); // G2
+      else if (s < 48) bassNotes.push(110.00); // A2
+      else if (s < 56) bassNotes.push(130.81); // C3
+      else if (s < 60) bassNotes.push(110.00); // A2
+      else bassNotes.push(73.42); // D2
+    }
+
+    for (let s = 0; s < 64; s++) {
+      const freq = bassNotes[s];
+      const startFrame = Math.round(s * stepSec * sampleRate);
+      const stepLen = Math.round(stepSec * 1.05 * sampleRate);
+      let phase = 0;
+      const isKickBeat = s % 4 === 0;
+
+      for (let i = 0; i < stepLen && startFrame + i < totalFrames; i++) {
+        const t = i / sampleRate;
+        phase += (2 * Math.PI * freq) / sampleRate;
+
+        // Attack & decay envelope
+        const attack = Math.min(t / 0.005, 1);
+        const decay = Math.exp(-t * 13);
+        // Sidechain ducking on the kick beat
+        const ducking = isKickBeat ? Math.min(t / 0.04, 1) : 1;
+        const env = attack * decay * ducking * 0.38;
+
+        // Rich analog synth wave (fundamental + 2nd + 3rd harmonic)
+        const wave = Math.sin(phase) + 0.38 * Math.sin(phase * 2) + 0.12 * Math.sin(phase * 3);
+        const sample = wave * env;
+        left[startFrame + i] += sample;
+        right[startFrame + i] += sample;
+      }
+    }
+
+    // --- 5. CYBER ARPEGGIO PLUCK (16th notes with stereo ping-pong) ---
+    const arpNotes = [
+      293.66, 440.00, 349.23, 587.33, 523.25, 440.00, 349.23, 392.00,
+      440.00, 293.66, 349.23, 523.25, 440.00, 392.00, 349.23, 329.63,
+      293.66, 440.00, 349.23, 659.25, 523.25, 440.00, 349.23, 392.00,
+      440.00, 349.23, 392.00, 523.25, 440.00, 392.00, 349.23, 293.66,
+      392.00, 587.33, 440.00, 698.46, 587.33, 440.00, 392.00, 440.00,
+      440.00, 659.25, 523.25, 783.99, 659.25, 523.25, 440.00, 392.00,
+      523.25, 659.25, 587.33, 783.99, 659.25, 523.25, 440.00, 392.00,
+      440.00, 392.00, 349.23, 329.63, 293.66, 349.23, 392.00, 440.00,
+    ];
+
+    for (let s = 0; s < 64; s++) {
+      const freq = arpNotes[s];
+      const startFrame = Math.round(s * stepSec * sampleRate);
+      const arpLen = Math.round(0.18 * sampleRate);
+      let phase = 0;
+      const leftPan = s % 2 === 0 ? 0.8 : 0.35;
+      const rightPan = s % 2 === 0 ? 0.35 : 0.8;
+
+      for (let i = 0; i < arpLen && startFrame + i < totalFrames; i++) {
+        const t = i / sampleRate;
+        phase += (2 * Math.PI * freq) / sampleRate;
+        const env = Math.exp(-t * 18) * 0.18;
+        // Triangle/sine pluck
+        const wave = Math.sin(phase) * 0.7 + (Math.abs((phase % (2 * Math.PI)) / Math.PI - 1) * 2 - 1) * 0.3;
+        const sample = wave * env;
+        left[startFrame + i] += sample * leftPan;
+        right[startFrame + i] += sample * rightPan;
+      }
+    }
+
+    // --- 6. SMOOTH LOOP BOUNDARIES & MASTER PEAK CLAMPING ---
+    const fadeFrames = 96;
+    for (let i = 0; i < fadeFrames; i++) {
+      const factor = i / fadeFrames;
+      left[i] *= factor;
+      right[i] *= factor;
+      left[totalFrames - 1 - i] *= factor;
+      right[totalFrames - 1 - i] *= factor;
+    }
+
+    let peak = 0;
+    for (let i = 0; i < totalFrames; i++) {
+      const absL = Math.abs(left[i]);
+      const absR = Math.abs(right[i]);
+      if (absL > peak) peak = absL;
+      if (absR > peak) peak = absR;
+    }
+    if (peak > 0.84) {
+      const scale = 0.84 / peak;
+      for (let i = 0; i < totalFrames; i++) {
+        left[i] *= scale;
+        right[i] *= scale;
+      }
+    }
+
+    return buffer;
+  }
 }
+
 

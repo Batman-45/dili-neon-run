@@ -120,6 +120,7 @@ function initGame(): void {
       audio.stopAmbientLoop();
       runCountdown(() => {
         hud.showHUD();
+        audio.startInGameBGM();
         loop.resume();
       });
     },
@@ -127,24 +128,28 @@ function initGame(): void {
     onPause: () => {
       loop.pause();
       audio.playPause();
+      audio.pauseInGameBGM();
       showScreen('screen-pause');
     },
 
     onResume: () => {
       loop.resume();
       audio.playMenuClick();
+      audio.resumeInGameBGM();
       showScreen(null); // hide all overlays, show HUD
     },
 
     onRestart: () => {
       resetGameWorld();
       hud.showHUD();
+      audio.startInGameBGM();
       loop.resume();
       showScreen(null);
     },
 
     onCrash: () => {
       loop.pause();
+      audio.stopInGameBGM(0.3);
 
       const isNewBest = comboSystem.score > previousBestScore;
       previousBestScore = comboSystem.personalBest;
@@ -174,6 +179,7 @@ function initGame(): void {
     onReturnToTitle: () => {
       resetGameWorld();
       hud.hideHUD();
+      audio.stopInGameBGM(0.1);
       audio.startAmbientLoop();
       hud.setStartPersonalBest(comboSystem.personalBest);
       showScreen('screen-start');
