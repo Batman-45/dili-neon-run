@@ -78,7 +78,7 @@ export class ObstacleManager {
     }
   }
 
-  private spawnSingleObstacle(type: ObstacleType, lane: LaneIndex, z: number): Obstacle | null {
+  public spawnSingleObstacle(type: ObstacleType, lane: LaneIndex, z: number): Obstacle | null {
     const obstacle = this.getAvailableObstacle();
     if (!obstacle) {
       return null;

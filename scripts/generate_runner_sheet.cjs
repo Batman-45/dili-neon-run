@@ -1,0 +1,671 @@
+const { spawn } = require('child_process');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const port = 9227;
+
+const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; background: transparent; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="3072" height="384"></canvas>
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    const TOTAL_FRAMES = 8;
+    const FRAME_SIZE = 384;
+
+    function renderSheet() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let f = 0; f < TOTAL_FRAMES; f++) {
+        const ox = f * FRAME_SIZE;
+        ctx.save();
+        ctx.translate(ox, 0);
+        drawRunnerFrame(ctx, f, TOTAL_FRAMES);
+        ctx.restore();
+      }
+    }
+
+    function drawRunnerFrame(ctx, frame, total) {
+      // 8-frame athletic running cycle:
+      // Frame 0: Left leg forward strike, Right leg high push-off kick back, Right arm forward, Left arm back
+      // Frame 1: Left leg supporting weight, Right leg passing under hip, Arms passing
+      // Frame 2: Right leg driving forward, Left leg thrusting back, Left arm swinging forward
+      // Frame 3: Right leg forward strike, Left leg high push-off kick back, Left arm forward, Right arm back
+      // Frame 4: Right leg supporting weight, Left leg passing under hip, Arms passing
+      // Frame 5: Left leg driving forward, Right leg thrusting back, Right arm swinging forward
+      // Frame 6: Flight phase (Left leg reaching forward, Right leg trailing)
+      // Frame 7: Prepare strike (Left foot about to plant, completing smooth loop)
+
+      const t = frame / total;
+      const angle = t * Math.PI * 2;
+
+      // Stride motion: -1 to +1
+      const stride = Math.cos(angle); 
+      // Arm swing is opposite to stride
+      const armSwing = -stride;
+
+      const cx = 192;
+      // Natural vertical bounce of running: lowest at foot contact (frame 0, 4), highest at push-off (frame 2, 6)
+      const verticalBob = Math.sin(angle * 2 - Math.PI / 2) * 9; 
+      const hipY = 222 + verticalBob;
+
+      // Natural hip sway into the weight-bearing leg
+      const hipSway = Math.sin(angle) * 4;
+      const hipX = cx + hipSway;
+
+      // ==========================================
+      // DEPTH-ORDERED DRAWING (Rear / Rear 3/4 view)
+      // ==========================================
+
+      // 1. Flowing superhero cape
+      drawCape(ctx, hipX, hipY - 48, angle);
+
+      // 2. Far arm (if swinging back)
+      if (armSwing > 0) {
+        // Right arm is back
+        drawArm(ctx, hipX + 30, hipY - 36, -armSwing, 'right', false);
+      } else {
+        // Left arm is back
+        drawArm(ctx, hipX - 26, hipY - 36, armSwing, 'left', false);
+      }
+
+      // 3. Legs (Depth sort: whichever leg is kicking back is drawn behind)
+      if (stride > 0) {
+        // Left is forward, Right is kicking back (farther)
+        drawLeg(ctx, hipX + 16, hipY + 6, -stride, 'right', false);
+        drawLeg(ctx, hipX - 16, hipY + 6, stride, 'left', true);
+      } else {
+        // Right is forward, Left is kicking back
+        drawLeg(ctx, hipX - 16, hipY + 6, stride, 'left', false);
+        drawLeg(ctx, hipX + 16, hipY + 6, -stride, 'right', true);
+      }
+
+      // 4. Torso & Cyber Backpack
+      drawTorso(ctx, hipX, hipY, angle);
+
+      // 5. Near arm (Swinging forward)
+      if (armSwing > 0) {
+        // Left arm is forward
+        drawArm(ctx, hipX - 26, hipY - 36, armSwing, 'left', true);
+      } else {
+        // Right arm is forward
+        drawArm(ctx, hipX + 30, hipY - 36, -armSwing, 'right', true);
+      }
+
+      // 6. Bubble Helmet & Dili Afro (Back view)
+      drawHeadAndHelmet(ctx, hipX, hipY - 80, angle);
+    }
+
+    // ------------------------------------------
+    // DRAW DYNAMIC BILLOWING CAPE
+    // ------------------------------------------
+    function drawCape(ctx, x, y, angle) {
+      ctx.save();
+      const waveA = Math.sin(angle * 1.5) * 16;
+      const waveB = Math.cos(angle * 2.0) * 12;
+
+      ctx.beginPath();
+      ctx.moveTo(x - 24, y);
+      ctx.lineTo(x + 24, y);
+
+      const leftTipX = x - 56 + waveA;
+      const leftTipY = y + 86 + Math.abs(waveA * 0.4);
+      const midTipX = x - 8 + waveB;
+      const midTipY = y + 92;
+      const rightTipX = x + 46 + waveA * 0.7;
+      const rightTipY = y + 84;
+
+      ctx.bezierCurveTo(x + 36, y + 30, rightTipX + 15, rightTipY - 35, rightTipX, rightTipY);
+      ctx.bezierCurveTo(x + 18, rightTipY - 8, midTipX + 20, midTipY + 4, midTipX, midTipY);
+      ctx.bezierCurveTo(midTipX - 18, midTipY + 4, leftTipX + 24, leftTipY - 8, leftTipX, leftTipY);
+      ctx.bezierCurveTo(x - 48, y + 48, x - 38, y + 22, x - 24, y);
+      ctx.closePath();
+
+      const capeGrad = ctx.createLinearGradient(x, y, x - 20, y + 92);
+      capeGrad.addColorStop(0, '#ab1a9a');
+      capeGrad.addColorStop(0.5, '#7e1073');
+      capeGrad.addColorStop(1, '#4c0646');
+      ctx.fillStyle = capeGrad;
+      ctx.fill();
+
+      // Cape highlight fold ripples
+      ctx.strokeStyle = '#d634c4';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y + 8);
+      ctx.bezierCurveTo(x - 20, y + 42, leftTipX + 28, leftTipY - 18, leftTipX + 18, leftTipY - 4);
+      ctx.moveTo(x + 10, y + 8);
+      ctx.bezierCurveTo(x + 6, y + 42, midTipX + 14, midTipY - 18, midTipX + 8, midTipY - 4);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#250322';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(x - 24, y);
+      ctx.lineTo(x + 24, y);
+      ctx.bezierCurveTo(x + 36, y + 30, rightTipX + 15, rightTipY - 35, rightTipX, rightTipY);
+      ctx.bezierCurveTo(x + 18, rightTipY - 8, midTipX + 20, midTipY + 4, midTipX, midTipY);
+      ctx.bezierCurveTo(midTipX - 18, midTipY + 4, leftTipX + 24, leftTipY - 8, leftTipX, leftTipY);
+      ctx.bezierCurveTo(x - 48, y + 48, x - 38, y + 22, x - 24, y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ------------------------------------------
+    // DRAW TORSO & CYBER BACKPACK
+    // ------------------------------------------
+    function drawTorso(ctx, x, y, angle) {
+      ctx.save();
+      const tilt = Math.sin(angle) * 0.03;
+      ctx.translate(x, y);
+      ctx.rotate(tilt);
+
+      // Pink hoodie torso
+      ctx.beginPath();
+      ctx.moveTo(-30, -42);
+      ctx.bezierCurveTo(-38, -18, -34, 6, -26, 14);
+      ctx.bezierCurveTo(-12, 18, 12, 18, 26, 14);
+      ctx.bezierCurveTo(34, 6, 38, -18, 30, -42);
+      ctx.bezierCurveTo(15, -45, -15, -45, -30, -42);
+      ctx.closePath();
+
+      const bodyGrad = ctx.createLinearGradient(0, -42, 0, 18);
+      bodyGrad.addColorStop(0, '#f472b6');
+      bodyGrad.addColorStop(0.35, '#ec4899');
+      bodyGrad.addColorStop(0.85, '#be185d');
+      bodyGrad.addColorStop(1, '#831843');
+      ctx.fillStyle = bodyGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Waistband seam
+      ctx.beginPath();
+      ctx.ellipse(0, 14, 25, 6, 0, 0, Math.PI);
+      ctx.strokeStyle = '#9d174d';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Cyber mini backpack
+      ctx.beginPath();
+      ctx.roundRect(-18, -36, 36, 38, [8, 8, 10, 10]);
+      const packGrad = ctx.createLinearGradient(0, -36, 0, 2);
+      packGrad.addColorStop(0, '#2e2742');
+      packGrad.addColorStop(0.65, '#1e192c');
+      packGrad.addColorStop(1, '#110e19');
+      ctx.fillStyle = packGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#0b0910';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Cyan Glowing Reactor Core
+      ctx.beginPath();
+      ctx.arc(0, -18, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#00f0ff';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, -18, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Magenta Status LED
+      ctx.fillStyle = '#ff007f';
+      ctx.fillRect(-8, -6, 16, 3);
+
+      // Backpack Straps
+      ctx.strokeStyle = '#161320';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(-14, -32);
+      ctx.lineTo(-24, -40);
+      ctx.moveTo(14, -32);
+      ctx.lineTo(24, -40);
+      ctx.stroke();
+
+      // Metal buckles
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(-20, -38, 6, 4);
+      ctx.fillRect(14, -38, 6, 4);
+
+      ctx.restore();
+    }
+
+    // ------------------------------------------
+    // DRAW ATHLETIC RUNNING LEG (Full anatomical locomotion)
+    // ------------------------------------------
+    function drawLeg(ctx, hipX, hipY, strideVal, legSide, isForeground) {
+      ctx.save();
+      ctx.translate(hipX, hipY);
+
+      // strideVal: +1.0 = forward plant, -1.0 = back push-off kick
+      let thighAngle = 0;
+      let kneeAngle = 0;
+      let footAngle = 0;
+
+      if (strideVal >= 0) {
+        // Forward reach & plant
+        thighAngle = strideVal * 0.42; 
+        kneeAngle = (1.0 - strideVal) * 0.35; 
+        footAngle = -0.15; // planted flat forward
+      } else {
+        // Back push-off kick high behind runner
+        const kick = Math.abs(strideVal);
+        thighAngle = -kick * 0.65; // thigh kicks back
+        kneeAngle = kick * 1.6; // sharp knee bend (heel kicks up)
+        footAngle = 0.85; // toes pointed back
+      }
+
+      const thighLen = 42;
+      const calfLen = 38;
+
+      const kx = Math.sin(thighAngle) * thighLen;
+      const ky = Math.cos(thighAngle) * thighLen;
+
+      const calfDir = thighAngle - kneeAngle;
+      const ax = kx + Math.sin(calfDir) * calfLen;
+      const ay = ky + Math.cos(calfDir) * calfLen;
+
+      const suitMain = isForeground ? '#ec4899' : '#be185d';
+      const suitDark = isForeground ? '#be185d' : '#881337';
+      const bootMain = isForeground ? '#ffffff' : '#e2e8f0';
+      const bootShad = isForeground ? '#94a3b8' : '#64748b';
+
+      // Thigh
+      ctx.beginPath();
+      ctx.moveTo(-13, 0);
+      ctx.lineTo(13, 0);
+      ctx.lineTo(kx + 11, ky);
+      ctx.lineTo(kx - 11, ky);
+      ctx.closePath();
+      const tGrad = ctx.createLinearGradient(0, 0, kx, ky);
+      tGrad.addColorStop(0, suitMain);
+      tGrad.addColorStop(1, suitDark);
+      ctx.fillStyle = tGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Knee joint
+      ctx.beginPath();
+      ctx.arc(kx, ky, 11, 0, Math.PI * 2);
+      ctx.fillStyle = suitMain;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Calf
+      ctx.beginPath();
+      ctx.moveTo(kx - 11, ky);
+      ctx.lineTo(kx + 11, ky);
+      ctx.lineTo(ax + 9, ay);
+      ctx.lineTo(ax - 9, ay);
+      ctx.closePath();
+      ctx.fillStyle = suitDark;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Chunky Astronaut Boot
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.rotate(calfDir + footAngle);
+
+      // Boot collar cuff
+      ctx.beginPath();
+      ctx.roundRect(-12, -6, 24, 11, [3, 3, 3, 3]);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Chunky Boot Body
+      ctx.beginPath();
+      ctx.moveTo(-14, 0);
+      ctx.bezierCurveTo(-16, 10, -14, 24, -11, 26);
+      ctx.lineTo(19, 26);
+      ctx.bezierCurveTo(26, 23, 26, 12, 20, 8);
+      ctx.bezierCurveTo(14, 2, 6, -2, 0, 0);
+      ctx.lineTo(-14, 0);
+      ctx.closePath();
+
+      const bGrad = ctx.createLinearGradient(-10, 0, 18, 26);
+      bGrad.addColorStop(0, bootMain);
+      bGrad.addColorStop(0.65, bootMain);
+      bGrad.addColorStop(1, bootShad);
+      ctx.fillStyle = bGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Dark rubber tread sole
+      ctx.beginPath();
+      ctx.moveTo(-13, 25);
+      ctx.lineTo(21, 25);
+      ctx.lineTo(19, 31);
+      ctx.lineTo(-11, 31);
+      ctx.closePath();
+      ctx.fillStyle = '#1e293b';
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Glowing Cyan Ankle Strap
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-9, 12);
+      ctx.lineTo(9, 12);
+      ctx.stroke();
+
+      ctx.restore(); // Boot
+      ctx.restore(); // Leg
+    }
+
+    // ------------------------------------------
+    // DRAW REALISTIC RUNNING ARM (Sagittal Swing)
+    // ------------------------------------------
+    function drawArm(ctx, shoulderX, shoulderY, swingProgress, armSide, isForeground) {
+      ctx.save();
+      ctx.translate(shoulderX, shoulderY);
+
+      // swingProgress: +1.0 = driving forward, -1.0 = swinging back
+      // When running viewed from behind:
+      // - Forward swing: elbow lowers slightly and tucks forward, hand reaches forward near waist/chest
+      // - Backward swing: elbow drives up and back behind the shoulder, hand rises near hip
+      const side = armSide === 'right' ? 1 : -1;
+
+      // Elbow offset from shoulder:
+      // When forward (swingProgress > 0): elbow at (+side*6, 22), forearm points forward (+side*8, 14)
+      // When backward (swingProgress < 0): elbow at (-side*8, 18), forearm points down/forward (+side*4, 26)
+      const ex = (side * 6) + (swingProgress * side * 4);
+      const ey = 20 - (swingProgress * 4);
+
+      const hx = ex + (side * 8) + (swingProgress * side * 6);
+      const hy = ey + (swingProgress > 0 ? -6 : 10);
+
+      const suitMain = isForeground ? '#ec4899' : '#be185d';
+      const gloveColor = isForeground ? '#ffffff' : '#cbd5e1';
+
+      // Shoulder
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fillStyle = suitMain;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Upper arm sleeve
+      ctx.beginPath();
+      ctx.moveTo(-7, 0);
+      ctx.lineTo(7, 0);
+      ctx.lineTo(ex + 6, ey);
+      ctx.lineTo(ex - 6, ey);
+      ctx.closePath();
+      ctx.fillStyle = suitMain;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Elbow joint
+      ctx.beginPath();
+      ctx.arc(ex, ey, 8, 0, Math.PI * 2);
+      ctx.fillStyle = suitMain;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Forearm sleeve
+      ctx.beginPath();
+      ctx.moveTo(ex - 6, ey);
+      ctx.lineTo(ex + 6, ey);
+      ctx.lineTo(hx + 6, hy);
+      ctx.lineTo(hx - 6, hy);
+      ctx.closePath();
+      ctx.fillStyle = suitMain;
+      ctx.fill();
+      ctx.strokeStyle = '#2b0722';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Glove cuff
+      ctx.beginPath();
+      ctx.arc(hx, hy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // White astronaut running fist
+      ctx.beginPath();
+      ctx.arc(hx, hy + 2, 9, 0, Math.PI * 2);
+      ctx.fillStyle = gloveColor;
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ------------------------------------------
+    // DRAW BUBBLE HELMET & DILI AFRO HAIR (Rear / Rear 3/4)
+    // ------------------------------------------
+    function drawHeadAndHelmet(ctx, hx, hy, angle) {
+      ctx.save();
+      const headSway = Math.sin(angle) * 0.03;
+      ctx.translate(hx, hy);
+      ctx.rotate(headSway);
+
+      const helmetR = 64;
+
+      // 1. Neck collar ring
+      ctx.beginPath();
+      ctx.ellipse(0, helmetR * 0.74, 38, 13, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#1e293b';
+      ctx.fill();
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // 2. Interior Dark Glass Void
+      ctx.beginPath();
+      ctx.arc(0, 0, helmetR - 2, 0, Math.PI * 2);
+      const voidGrad = ctx.createRadialGradient(0, 10, 10, 0, 0, helmetR);
+      voidGrad.addColorStop(0, '#260a3d');
+      voidGrad.addColorStop(0.85, '#140322');
+      voidGrad.addColorStop(1, '#08010d');
+      ctx.fillStyle = voidGrad;
+      ctx.fill();
+
+      // 3. Volumetric Curly Afro Hair (Back of head view)
+      const curls = [
+        { x: 0, y: -4, r: 27, c: '#7e22ce' },
+        { x: -16, y: -14, r: 23, c: '#6b21a8' },
+        { x: 16, y: -14, r: 23, c: '#9333ea' },
+        { x: 0, y: -26, r: 23, c: '#a855f7' },
+        { x: -28, y: -8, r: 19, c: '#581c87' },
+        { x: 28, y: -8, r: 19, c: '#a855f7' },
+        { x: -24, y: 12, r: 17, c: '#4c1d95' },
+        { x: 24, y: 12, r: 17, c: '#9333ea' },
+        { x: -13, y: 18, r: 18, c: '#581c87' },
+        { x: 13, y: 18, r: 18, c: '#7e22ce' },
+        { x: -18, y: -29, r: 16, c: '#6b21a8' },
+        { x: 18, y: -29, r: 16, c: '#c084fc' },
+        { x: 0, y: -37, r: 15, c: '#d8b4fe' },
+      ];
+
+      for (const curl of curls) {
+        ctx.beginPath();
+        ctx.arc(curl.x, curl.y, curl.r, 0, Math.PI * 2);
+        const cGrad = ctx.createRadialGradient(curl.x + 4, curl.y - 4, 2, curl.x, curl.y, curl.r);
+        cGrad.addColorStop(0, '#e9d5ff');
+        cGrad.addColorStop(0.35, curl.c);
+        cGrad.addColorStop(1, '#2e1065');
+        ctx.fillStyle = cGrad;
+        ctx.fill();
+        ctx.strokeStyle = '#1e0845';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
+
+      // 4. Subtle visor edge on right side (Rear 3/4 glance only - NO FACE / NO EYES!)
+      ctx.beginPath();
+      ctx.arc(31, 6, 13, -Math.PI * 0.38, Math.PI * 0.38, false);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#f472b6';
+      ctx.stroke();
+
+      // 5. Glass Dome Specular Highlights & Cyan Rim
+      ctx.beginPath();
+      ctx.arc(0, 0, helmetR, 0, Math.PI * 2);
+
+      const glassGrad = ctx.createRadialGradient(-18, -22, 14, 0, 0, helmetR);
+      glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+      glassGrad.addColorStop(0.35, 'rgba(0, 240, 255, 0.1)');
+      glassGrad.addColorStop(0.8, 'rgba(168, 85, 247, 0.16)');
+      glassGrad.addColorStop(1, 'rgba(0, 240, 255, 0.6)');
+      ctx.fillStyle = glassGrad;
+      ctx.fill();
+
+      // Glowing Cyan Glass Rim
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.85)';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+
+      // Top-Left Gloss Arc
+      ctx.beginPath();
+      ctx.arc(0, 0, helmetR - 9, -Math.PI * 0.85, -Math.PI * 0.42);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Specular Reflection Dot
+      ctx.beginPath();
+      ctx.arc(-helmetR * 0.56, -helmetR * 0.36, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Bottom-Right Neon Pink Bounce Reflection
+      ctx.beginPath();
+      ctx.arc(0, 0, helmetR - 7, Math.PI * 0.12, Math.PI * 0.4);
+      ctx.strokeStyle = 'rgba(255, 0, 127, 0.65)';
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    renderSheet();
+  </script>
+</body>
+</html>
+`;
+
+fs.writeFileSync(path.resolve('scripts/render_spritesheet.html'), htmlContent);
+
+async function main() {
+  const chromeProc = spawn(chromePath, [
+    `--remote-debugging-port=${port}`,
+    '--headless=new',
+    '--disable-gpu',
+    '--window-size=3200,600',
+    'about:blank',
+  ]);
+
+  await new Promise(r => setTimeout(r, 1500));
+
+  function getList() {
+    return new Promise((resolve, reject) => {
+      http.get(`http://localhost:${port}/json/list`, res => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve(JSON.parse(data)));
+      }).on('error', reject);
+    });
+  }
+
+  try {
+    const list = await getList();
+    const page = list.find(t => t.type === 'page');
+    const ws = new WebSocket(page.webSocketDebuggerUrl);
+    let id = 1;
+    const callbacks = new Map();
+
+    function send(method, params = {}) {
+      return new Promise((resolve, reject) => {
+        const reqId = id++;
+        callbacks.set(reqId, { resolve, reject });
+        ws.send(JSON.stringify({ id: reqId, method, params }));
+      });
+    }
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.id && callbacks.has(msg.id)) {
+        const { resolve, reject } = callbacks.get(msg.id);
+        callbacks.delete(msg.id);
+        if (msg.error) reject(msg.error);
+        else resolve(msg.result);
+      }
+    };
+
+    await new Promise(resolve => ws.onopen = resolve);
+    await send('Page.enable');
+    await send('Runtime.enable');
+
+    const fileUrl = 'file:///' + path.resolve('scripts/render_spritesheet.html').replace(/\\\\/g, '/');
+    await send('Page.navigate', { url: fileUrl });
+    await new Promise(r => setTimeout(r, 1200));
+
+    const res = await send('Runtime.evaluate', {
+      expression: `document.getElementById('c').toDataURL('image/png')`,
+      returnByValue: true,
+    });
+
+    const dataUrl = res.result?.value;
+    if (dataUrl && dataUrl.startsWith('data:image/png;base64,')) {
+      const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+      const outPath = path.resolve('public/assets/dili_runner_sheet.png');
+      fs.writeFileSync(outPath, Buffer.from(base64, 'base64'));
+      console.log('Successfully saved improved runner spritesheet to:', outPath);
+    }
+
+    ws.close();
+  } finally {
+    chromeProc.kill();
+  }
+}
+
+main().catch(console.error);

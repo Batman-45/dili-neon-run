@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 import type { ICharacterVisual } from './ICharacterVisual';
-import { DiliMascotVisual } from './DiliMascotVisual';
+import { DiliRunnerVisual } from './DiliRunnerVisual';
 import { TrackManager } from '../track/TrackManager';
 
 export type LaneIndex = -1 | 0 | 1;
@@ -69,8 +69,8 @@ export class DiliCharacter {
     this.group = new THREE.Group();
     scene.add(this.group);
 
-    // Visual decoupled through interface (Production approved Dili mascot visual)
-    this.visual = visualOverride ?? new DiliMascotVisual();
+    // Visual decoupled through interface (Production animated 8-frame Dili runner visual)
+    this.visual = visualOverride ?? new DiliRunnerVisual();
     this.group.add(this.visual.group);
 
     // Shield Bubble visual mesh
@@ -84,27 +84,80 @@ export class DiliCharacter {
   private createShieldMesh(): THREE.Group {
     const root = new THREE.Group();
     root.visible = false;
-    root.position.set(0, 0.9, 0);
+    root.position.set(0, 1.0, 0);
 
-    const geo = new THREE.IcosahedronGeometry(1.15, 2);
-    const mat = new THREE.MeshBasicMaterial({
+    // 1. Crystal-clear outer holographic bubble (ultra-transparent so Dili is fully visible)
+    const shellGeo = new THREE.SphereGeometry(1.35, 24, 18);
+    const shellMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.35,
-      wireframe: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
     });
-    const sphere = new THREE.Mesh(geo, mat);
-    root.add(sphere);
+    const shell = new THREE.Mesh(shellGeo, shellMat);
+    shell.name = 'shieldShell';
+    root.add(shell);
 
-    const innerGeo = new THREE.IcosahedronGeometry(1.05, 1);
+    // 2. Soft violet secondary rim resonance
+    const innerGeo = new THREE.SphereGeometry(1.3, 20, 16);
     const innerMat = new THREE.MeshBasicMaterial({
       color: 0x9d00ff,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.08,
       blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      depthWrite: false,
     });
     const inner = new THREE.Mesh(innerGeo, innerMat);
     root.add(inner);
+
+    // 3. Orbital energy arc ring A (cyan plasma loop)
+    const ringGeoA = new THREE.TorusGeometry(1.38, 0.016, 8, 48);
+    const ringMatA = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const ringA = new THREE.Mesh(ringGeoA, ringMatA);
+    ringA.name = 'ringA';
+    ringA.rotation.x = Math.PI / 4;
+    ringA.rotation.y = Math.PI / 6;
+    root.add(ringA);
+
+    // 4. Orbital energy arc ring B (magenta plasma loop)
+    const ringGeoB = new THREE.TorusGeometry(1.36, 0.014, 8, 48);
+    const ringMatB = new THREE.MeshBasicMaterial({
+      color: 0xff007f,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const ringB = new THREE.Mesh(ringGeoB, ringMatB);
+    ringB.name = 'ringB';
+    ringB.rotation.x = -Math.PI / 3;
+    ringB.rotation.z = Math.PI / 4;
+    root.add(ringB);
+
+    // 5. Soft ground energy contact projection on road surface
+    const groundDiscGeo = new THREE.RingGeometry(0.8, 1.3, 24);
+    const groundDiscMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const groundDisc = new THREE.Mesh(groundDiscGeo, groundDiscMat);
+    groundDisc.rotation.x = -Math.PI / 2;
+    groundDisc.position.y = -0.98; // contacts road at groundY = 0
+    groundDisc.name = 'groundDisc';
+    root.add(groundDisc);
 
     return root;
   }
@@ -167,10 +220,13 @@ export class DiliCharacter {
     // 6. Update visual avatar animation
     this.visual.update(delta, currentTrackSpeed);
 
-    // 7. Update shield bubble rotation
+    // 7. Update shield energy rings & subtle field rotation
     if (this.shieldMesh.visible) {
-      this.shieldMesh.rotation.y += delta * 1.6;
-      this.shieldMesh.rotation.x += delta * 0.9;
+      const ringA = this.shieldMesh.getObjectByName('ringA');
+      const ringB = this.shieldMesh.getObjectByName('ringB');
+      if (ringA) ringA.rotation.y += delta * 2.8;
+      if (ringB) ringB.rotation.z -= delta * 2.2;
+      this.shieldMesh.rotation.y += delta * 0.6;
     }
 
     // 8. Update collision hitbox

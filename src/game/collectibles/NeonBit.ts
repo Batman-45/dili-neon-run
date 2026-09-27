@@ -46,13 +46,30 @@ export class NeonBit implements ICollectible {
     });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     this.group.add(ring);
+
+    // Ground light projection on asphalt
+    const groundGeo = new THREE.PlaneGeometry(0.8, 0.8);
+    const groundMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.25,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.groundGlow = new THREE.Mesh(groundGeo, groundMat);
+    this.groundGlow.rotation.x = -Math.PI / 2;
+    this.group.add(this.groundGlow);
   }
+
+  private groundGlow: THREE.Mesh;
 
   public spawn(x: number, y: number, z: number): void {
     this.active = true;
     this.collected = false;
     this.basePosY = y;
     this.group.position.set(x, y, z);
+    this.groundGlow.position.set(0, -y + 0.02, 0);
     this.group.scale.set(1, 1, 1);
     this.group.visible = true;
     this.bobTime = Math.random() * Math.PI * 2;

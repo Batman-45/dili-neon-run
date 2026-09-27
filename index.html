@@ -38,27 +38,26 @@
           <div class="s-particle"></div><div class="s-particle"></div>
           <div class="s-particle"></div><div class="s-particle"></div>
         </div>
-        <!-- Scan-line overlay -->
         <div class="start-scanlines" aria-hidden="true"></div>
 
         <!-- Content card -->
         <div class="start-content">
-          <div class="start-zone-tag">DLICOM CITY — SECTOR 7</div>
-
-          <div class="start-logo">
-            <div class="logo-dili">DILI</div>
-            <div class="logo-colon">:</div>
-            <div class="logo-neon-run">NEON RUN</div>
+          <!-- 1. DILI -->
+          <div class="start-brand">
+            <h1 class="logo-dili-hero">DILI</h1>
           </div>
 
-          <div class="start-tagline">RACE THE NEON. BEAT THE CITY.</div>
+          <!-- 2. Large Character Presentation -->
+          <div class="start-character-hero" aria-label="Dili character">
+            <div class="char-pedestal-glow"></div>
+            <div class="char-hologram-rings"></div>
+            <img src="/assets/dili.png" alt="Dili Mascot" class="start-char-mascot-img" />
+          </div>
 
-          <!-- Character visual area -->
-          <div class="start-character-area" aria-label="Dili character">
-            <div class="char-silhouette">
-              <div class="char-glow-ring"></div>
-              <img src="/assets/dili.png" alt="Dili Mascot" class="start-char-mascot-img" />
-            </div>
+          <!-- 3. GAME TITLE & 4. Subtitle -->
+          <div class="start-title-group">
+            <div class="logo-neon-run-hero">NEON RUN</div>
+            <div class="start-tagline">RACE THE NEON • SURVIVE THE HIGHWAY</div>
           </div>
 
           <!-- Personal Best -->
@@ -67,15 +66,15 @@
             <span class="start-best-value neon-cyan" id="start-best-score">---</span>
           </div>
 
-          <!-- Play Button -->
-          <button id="btn-play" class="btn-play-main" type="button">
+          <!-- 5. PLAY Button -->
+          <button id="btn-play" class="btn-play-hero" type="button">
             <span class="btn-play-inner">
               <span class="btn-play-icon">▶</span>
               <span class="btn-play-text">START RUN</span>
             </span>
           </button>
 
-          <!-- Controls hint -->
+          <!-- 6. Secondary options & hints -->
           <div class="start-controls-hint">
             <div class="controls-row">
               <div class="ctrl-item"><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> Lane</div>
@@ -84,7 +83,7 @@
               <div class="ctrl-item"><kbd>Shift</kbd> / <kbd>E</kbd> Dash</div>
               <div class="ctrl-item"><kbd>P</kbd> / <kbd>Esc</kbd> Pause</div>
             </div>
-            <div class="ctrl-touch-hint">Touch: Swipe to move &bull; Double-tap to Dash</div>
+            <div class="ctrl-touch-hint">Touch: Swipe to move • Double-tap to Dash</div>
           </div>
 
           <!-- Sound toggle -->
@@ -95,14 +94,14 @@
       </div>
 
       <!-- =============================================
-           SCREEN 2: COUNTDOWN OVERLAY (shown between start and gameplay)
+           SCREEN 2: COUNTDOWN OVERLAY
            ============================================= -->
       <div id="screen-countdown" class="game-screen screen-countdown">
         <div class="countdown-number" id="countdown-number">3</div>
       </div>
 
       <!-- =============================================
-           SCREEN 3: GAMEPLAY HUD (always in DOM, hidden during other screens)
+           SCREEN 3: GAMEPLAY HUD
            ============================================= -->
       <div id="hud-overlay" class="hud-hidden">
 
@@ -112,43 +111,38 @@
           <span class="near-miss-combo" id="near-miss-combo-tag">+150 [2x]</span>
         </div>
 
-        <!-- Top HUD bar -->
+        <!-- Top HUD bar (Compact floating glass pills) -->
         <header class="hud-top">
-          <div class="hud-brand">
-            <div class="hud-location">ZONE: <span class="neon-cyan">DLICOM HIGHWAY</span></div>
+          <div class="hud-brand-pill">
+            <span class="zone-badge">ZONE</span>
+            <span class="zone-name neon-cyan">SECTOR 07</span>
           </div>
 
           <div class="hud-metrics">
             <div class="metric-card score-card">
               <div class="metric-label">SCORE</div>
-              <div class="metric-value" id="hud-score">0</div>
-            </div>
-            <div class="metric-card bits-card">
-              <div class="metric-label">⬡ BITS</div>
-              <div class="metric-value neon-cyan" id="hud-bits">0</div>
-            </div>
-            <div class="metric-card combo-card">
-              <div class="metric-label">COMBO</div>
-              <div class="metric-value" id="hud-combo">1.0x</div>
+              <div class="metric-value neon-cyan" id="hud-score">0</div>
             </div>
             <div class="metric-card dist-card">
               <div class="metric-label">DIST</div>
               <div class="metric-value" id="hud-distance">0 <span class="metric-unit">m</span></div>
             </div>
+            <div class="metric-card bits-card">
+              <div class="metric-label">⬡ BITS</div>
+              <div class="metric-value neon-pink" id="hud-bits">0</div>
+            </div>
+            <div class="metric-card combo-card">
+              <div class="metric-label">COMBO</div>
+              <div class="metric-value" id="hud-combo">1.0x</div>
+            </div>
           </div>
 
-          <!-- Pause button (top right) -->
+          <!-- Pause button -->
           <button id="btn-pause" class="btn-pause-hud" type="button" aria-label="Pause">⏸</button>
         </header>
 
-        <!-- Mid HUD: Lane, Active Power-Up, Dash Gauge -->
+        <!-- Mid HUD: Power-Up & Dash -->
         <div class="hud-mid-row">
-          <div class="hud-lane-indicator">
-            <div class="lane-node" data-lane="-1">L</div>
-            <div class="lane-node active" data-lane="0">C</div>
-            <div class="lane-node" data-lane="1">R</div>
-          </div>
-
           <!-- Active Power-Up Banner -->
           <div class="hud-powerup-badge hidden" id="hud-powerup-badge">
             <div class="powerup-icon" id="hud-powerup-icon">⚡</div>
@@ -200,44 +194,42 @@
            ============================================= -->
       <div id="screen-gameover" class="game-screen screen-gameover">
         <div class="modal-card gameover-card">
-          <!-- New Best badge (conditionally shown) -->
           <div class="new-best-badge hidden" id="new-best-badge">🏆 NEW PERSONAL BEST!</div>
 
-          <div class="modal-glitch-badge">SYSTEM ALERT</div>
-          <h2 class="modal-title">RUN <span class="neon-pink">TERMINATED</span></h2>
-          <p class="modal-subtitle">DILI IMPACT REGISTERED — DLICOM HIGHWAY</p>
+          <h2 class="modal-title">GAME <span class="neon-pink">OVER</span></h2>
+
+          <div class="results-hero">
+            <div class="result-hero-label">FINAL SCORE</div>
+            <div class="result-hero-value neon-cyan" id="res-score">0</div>
+          </div>
 
           <div class="results-grid">
-            <div class="result-box result-box--highlight">
-              <span class="result-label">FINAL SCORE</span>
-              <span class="result-value neon-cyan" id="res-score">0</span>
-            </div>
-            <div class="result-box">
-              <span class="result-label">⬡ NEON BITS</span>
-              <span class="result-value neon-cyan" id="res-bits">0</span>
-            </div>
             <div class="result-box">
               <span class="result-label">DISTANCE</span>
               <span class="result-value" id="res-distance">0 m</span>
             </div>
             <div class="result-box">
+              <span class="result-label">⬡ BITS</span>
+              <span class="result-value neon-cyan" id="res-bits">0</span>
+            </div>
+            <div class="result-box">
               <span class="result-label">NEAR MISSES</span>
               <span class="result-value neon-pink" id="res-near-misses">0</span>
             </div>
-            <div class="result-box result-box--wide">
+            <div class="result-box">
               <span class="result-label">MAX COMBO</span>
               <span class="result-value" id="res-max-combo">1.0x</span>
             </div>
           </div>
 
           <div class="best-score-row">
-            <span>LOCAL BEST:</span>
+            <span>BEST SCORE:</span>
             <strong class="neon-cyan" id="res-best">0</strong>
           </div>
 
           <div class="gameover-buttons">
-            <button id="btn-restart" class="cyber-button" type="button">↺ RUN AGAIN</button>
-            <button id="btn-gameover-title" class="cyber-button cyber-button--ghost" type="button">⌂ TITLE</button>
+            <button id="btn-restart" class="cyber-button" type="button">↺ PLAY AGAIN</button>
+            <button id="btn-gameover-title" class="cyber-button cyber-button--ghost" type="button">⌂ HOME</button>
           </div>
         </div>
       </div>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dili Running Polish Workbench</title>
+  <style>
+    body {
+      background: #0f0c1b;
+      color: #fff;
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    h1, h2 { color: #00f0ff; }
+    .grid { display: flex; gap: 20px; flex-wrap: wrap; }
+    .card {
+      background: #181428;
+      border: 1px solid #332850;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    canvas {
+      background: #05040a;
+      border: 1px solid #00f0ff44;
+      border-radius: 4px;
+    }
+    .preview-container {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    button {
+      background: #00f0ff;
+      color: #000;
+      font-weight: bold;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #3df3ff; }
+  </style>
+</head>
+<body>
+  <h1>Dili Mascot Rear Running Workbench</h1>
+  <p>Comparing and tuning running animation, 3D volume, purple brain richness, and 'D' back branding.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Animated Preview (Real-time Run Loop)</h2>
+      <div class="preview-container">
+        <canvas id="animCanvas" width="384" height="384"></canvas>
+        <div>
+          <p>Frame: <span id="frameNum">0</span> / 7</p>
+          <p>Speed: <span id="fpsNum">12</span> FPS</p>
+          <input type="range" id="fpsSlider" min="4" max="24" value="12">
+          <br><br>
+          <button id="exportBtn">Export Spritesheet to /assets/dili_runner_sheet.png</button>
+          <p id="statusMsg" style="color: #00ff88;"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>8-Frame Strip Overview</h2>
+      <canvas id="stripCanvas" width="1536" height="192"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const animCanvas = document.getElementById('animCanvas');
+    const actx = animCanvas.getContext('2d');
+    const stripCanvas = document.getElementById('stripCanvas');
+    const sctx = stripCanvas.getContext('2d');
+
+    const TOTAL_FRAMES = 8;
+    const FRAME_SIZE = 384;
+    let frames = [];
+    let currentFrame = 0;
+    let fps = 12;
+    let lastTime = 0;
+    let accumTime = 0;
+
+    async function loadFrames() {
+      const promises = [];
+      for (let i = 0; i < TOTAL_FRAMES; i++) {
+        promises.push(new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = '/assets/3d_frames/frame_' + i + '.png';
+          img.onload = () => resolve(img);
+        }));
+      }
+      const rawFrames = await Promise.all(promises);
+
+      // Process each frame to:
+      // 1. Enrich purple hair curls inside the helmet to match official Dili (#3b1458 - #682098)
+      // 2. Remove specular glare on backpack
+      // 3. Add official bold white 'D' branding on the back of the cape/hoodie
+      frames = rawFrames.map((raw, frameIdx) => {
+        const c = document.createElement('canvas');
+        c.width = FRAME_SIZE;
+        c.height = FRAME_SIZE;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(raw, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, FRAME_SIZE, FRAME_SIZE);
+        const d = imgData.data;
+
+        // A. Enrich purple hair curls
+        for (let y = 60; y < 220; y++) {
+          for (let x = 90; x < 295; x++) {
+            const idx = (y * FRAME_SIZE + x) * 4;
+            const a = d[idx + 3];
+            if (a < 35) continue;
+
+            const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+            // Hair condition
+            const isHair = (b > g && (r > g || b > 60)) && !(r > 195 && g > 155 && b > 185 && y > 185);
+
+            if (isHair) {
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              // Target official Dili rich purple palette
+              const targetR = Math.min(255, lum * 0.95 + 16);
+              const targetG = Math.max(0, lum * 0.22);
+              const targetB = Math.min(255, lum * 1.38 + 28);
+
+              d[idx] = Math.round(r * 0.3 + targetR * 0.7);
+              d[idx + 1] = Math.round(g * 0.3 + targetG * 0.7);
+              d[idx + 2] = Math.round(b * 0.3 + targetB * 0.7);
+            }
+          }
+        }
+
+        // B. Clean up dark backpack specular glare spot in frames 3, 6, 7
+        for (let y = 195; y < 265; y++) {
+          for (let x = 150; x < 230; x++) {
+            const idx = (y * FRAME_SIZE + x) * 4;
+            const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+            if (r > 175 && g > 175 && b > 175) {
+              d[idx] = 48;
+              d[idx + 1] = 32;
+              d[idx + 2] = 48;
+            }
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+
+        // C. Draw official large bold white 'D' branding on the back!
+        // Stride torso bob calculation for the 'D' placement:
+        // Bob is lowest at foot strike (frames 0, 4), highest at passing/lift (frames 2, 6)
+        const t = frameIdx / TOTAL_FRAMES;
+        const bob = Math.sin(t * Math.PI * 2 * 2 - Math.PI / 2) * 4.5;
+        const sway = Math.sin(t * Math.PI * 2) * 2;
+
+        const dX = 192 + sway;
+        const dY = 222 + bob;
+
+        ctx.save();
+        ctx.translate(dX, dY);
+
+        // Subtle tilt with running stride
+        const strideTilt = Math.sin(t * Math.PI * 2) * 0.05;
+        ctx.rotation = strideTilt;
+
+        // Custom drawn 3D 'D' badge matching 01-original.png:
+        // Dimensions: width ~38px, height ~46px
+        drawDiliBadge(ctx, 0, 0);
+
+        ctx.restore();
+
+        return c;
+      });
+
+      // Render strip canvas
+      sctx.clearRect(0, 0, stripCanvas.width, stripCanvas.height);
+      for (let i = 0; i < TOTAL_FRAMES; i++) {
+        sctx.drawImage(frames[i], 0, 0, FRAME_SIZE, FRAME_SIZE, i * 192, 0, 192, 192);
+      }
+
+      window.processedFrames = frames;
+      requestAnimationFrame(loop);
+    }
+
+    function drawDiliBadge(ctx, x, y) {
+      ctx.save();
+      // Drop shadow on cape folds
+      ctx.shadowColor = 'rgba(20, 5, 30, 0.8)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 3;
+
+      ctx.font = '900 46px "Arial Black", "Impact", "Segoe UI Black", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // 1. Neon Magenta/Purple border bevel
+      ctx.strokeStyle = '#d62a98';
+      ctx.lineWidth = 7;
+      ctx.lineJoin = 'round';
+      ctx.strokeText('D', x, y);
+
+      // 2. Clear shadow for clean core
+      ctx.shadowColor = 'transparent';
+
+      // 3. Crisp white core
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('D', x, y);
+
+      // 4. Subtle glossy top highlight
+      ctx.fillStyle = 'rgba(255, 230, 250, 0.95)';
+      ctx.fillText('D', x, y - 1);
+
+      ctx.restore();
+    }
+
+    function loop(now) {
+      if (!lastTime) lastTime = now;
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+
+      accumTime += delta;
+      const frameDuration = 1 / fps;
+      if (accumTime >= frameDuration) {
+        currentFrame = (currentFrame + 1) % TOTAL_FRAMES;
+        accumTime %= frameDuration;
+        document.getElementById('frameNum').innerText = currentFrame;
+      }
+
+      // Render active frame on animCanvas with road grid backdrop
+      actx.fillStyle = '#0a0815';
+      actx.fillRect(0, 0, animCanvas.width, animCanvas.height);
+
+      // Cyber lane markers
+      actx.strokeStyle = '#00f0ff33';
+      actx.lineWidth = 2;
+      actx.beginPath();
+      actx.moveTo(60, 384); actx.lineTo(150, 0);
+      actx.moveTo(324, 384); actx.lineTo(234, 0);
+      actx.stroke();
+
+      // Road dash line
+      actx.strokeStyle = '#00f0ff88';
+      actx.setLineDash([20, 15]);
+      actx.beginPath();
+      actx.moveTo(192, 384); actx.lineTo(192, 0);
+      actx.stroke();
+      actx.setLineDash([]);
+
+      if (frames[currentFrame]) {
+        // Soft ground shadow under boots
+        actx.save();
+        actx.scale(1, 0.35);
+        actx.beginPath();
+        actx.arc(192, 370 / 0.35, 48, 0, Math.PI * 2);
+        actx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        actx.fill();
+        actx.restore();
+
+        // Draw runner frame
+        actx.drawImage(frames[currentFrame], 0, 0);
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    document.getElementById('fpsSlider').addEventListener('input', (e) => {
+      fps = parseInt(e.target.value);
+      document.getElementById('fpsNum').innerText = fps;
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width = FRAME_SIZE * TOTAL_FRAMES;
+      fullCanvas.height = FRAME_SIZE;
+      const fctx = fullCanvas.getContext('2d');
+
+      for (let i = 0; i < TOTAL_FRAMES; i++) {
+        fctx.drawImage(frames[i], i * FRAME_SIZE, 0);
+      }
+
+      const dataUrl = fullCanvas.toDataURL('image/png');
+      window.latestExportDataUrl = dataUrl;
+      document.getElementById('statusMsg').innerText = 'Spritesheet generated in memory! Ready to save to disk.';
+    });
+
+    loadFrames();
+  </script>
+</body>
+</html>

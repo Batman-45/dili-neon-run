@@ -4,6 +4,13 @@ import { ObstacleType, type IObstacle } from './ObstacleTypes';
 import { TrackManager } from '../track/TrackManager';
 import type { LaneIndex } from '../character/DiliCharacter';
 
+/**
+ * Obstacle — High-fidelity 3D futuristic obstacle models.
+ * Types:
+ * - HIGH_BARRIER: Industrial Cyber Construction Hurdle (Jump Over)
+ * - LOW_BARRIER: High-tech Security Scanner Gantry (Slide Under)
+ * - BLOCKADE: Armored Autonomous Cyber Roadblock Drone (Switch Lanes / Dash Smash)
+ */
 export class Obstacle implements IObstacle {
   public readonly group: THREE.Group;
   public type: ObstacleType = ObstacleType.HIGH_BARRIER;
@@ -32,101 +39,131 @@ export class Obstacle implements IObstacle {
     this.group.add(this.blockadeMesh);
   }
 
+  private static createHazardTexture(col1: string, col2: string): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = col1;
+    ctx.fillRect(0, 0, 256, 64);
+
+    // Diagonal hazard stripes
+    ctx.fillStyle = col2;
+    ctx.beginPath();
+    for (let x = -64; x < 320; x += 32) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 20, 0);
+      ctx.lineTo(x + 20 - 40, 64);
+      ctx.lineTo(x - 40, 64);
+    }
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 1);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   private createHighBarrierMesh(): THREE.Group {
     const root = new THREE.Group();
     const laneHalfWidth = 1.05;
 
-    // Side structural posts
-    const postGeo = new THREE.BoxGeometry(0.2, 0.9, 0.25);
-    const postMat = new THREE.MeshStandardMaterial({
-      color: 0x1e2030,
-      roughness: 0.4,
+    // 1. Heavy industrial cast-steel base stanchions
+    const baseGeo = new THREE.BoxGeometry(0.3, 0.22, 0.45);
+    const baseMat = new THREE.MeshStandardMaterial({
+      color: 0x141824,
+      roughness: 0.5,
       metalness: 0.8,
     });
 
+    const leftBase = new THREE.Mesh(baseGeo, baseMat);
+    leftBase.position.set(-laneHalfWidth, 0.11, 0);
+    root.add(leftBase);
+
+    const rightBase = new THREE.Mesh(baseGeo, baseMat);
+    rightBase.position.set(laneHalfWidth, 0.11, 0);
+    root.add(rightBase);
+
+    // 2. Upright support pillars with hazard stripes
+    const postGeo = new THREE.BoxGeometry(0.18, 0.72, 0.2);
+    const hazardTex = Obstacle.createHazardTexture('#ff9900', '#111420');
+    const postMat = new THREE.MeshStandardMaterial({
+      map: hazardTex,
+      roughness: 0.4,
+      metalness: 0.6,
+    });
+
     const leftPost = new THREE.Mesh(postGeo, postMat);
-    leftPost.position.set(-laneHalfWidth, 0.45, 0);
+    leftPost.position.set(-laneHalfWidth, 0.48, 0);
     root.add(leftPost);
 
     const rightPost = new THREE.Mesh(postGeo, postMat);
-    rightPost.position.set(laneHalfWidth, 0.45, 0);
+    rightPost.position.set(laneHalfWidth, 0.48, 0);
     root.add(rightPost);
 
-    // Glowing amber beacon caps on posts
-    const capGeo = new THREE.BoxGeometry(0.24, 0.12, 0.28);
-    const capMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    // 3. Strobe warning beacon caps on posts
+    const beaconGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.14, 8);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
 
-    const leftCap = new THREE.Mesh(capGeo, capMat);
-    leftCap.position.set(-laneHalfWidth, 0.9, 0);
-    root.add(leftCap);
+    const leftBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+    leftBeacon.position.set(-laneHalfWidth, 0.9, 0);
+    root.add(leftBeacon);
 
-    const rightCap = new THREE.Mesh(capGeo, capMat);
-    rightCap.position.set(laneHalfWidth, 0.9, 0);
-    root.add(rightCap);
+    const rightBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+    rightBeacon.position.set(laneHalfWidth, 0.9, 0);
+    root.add(rightBeacon);
 
-    // Dual horizontal hurdle beams (low hurdle structure)
-    const beamGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.1, 0.18, 0.12);
-    const beamMat = new THREE.MeshStandardMaterial({
-      color: 0x141828,
+    // 4. Heavy structural crossbar at Y = 0.45m
+    const lowerBeamGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.15, 0.14, 0.14);
+    const lowerBeam = new THREE.Mesh(lowerBeamGeo, baseMat);
+    lowerBeam.position.set(0, 0.4, 0);
+    root.add(lowerBeam);
+
+    // 5. High-visibility top hurdle repulsor rail at Y = 0.82m
+    const topRailGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.12, 0.12, 0.14);
+    const topRailMat = new THREE.MeshStandardMaterial({
+      color: 0x22283a,
       roughness: 0.35,
       metalness: 0.85,
     });
+    const topRail = new THREE.Mesh(topRailGeo, topRailMat);
+    topRail.position.set(0, 0.82, 0);
+    root.add(topRail);
 
-    // Lower beam at 0.35m
-    const lowerBeam = new THREE.Mesh(beamGeo, beamMat);
-    lowerBeam.position.set(0, 0.35, 0);
-    root.add(lowerBeam);
+    // Glowing plasma core bar
+    const plasmaGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.18, 0.06, 0.16);
+    const plasmaMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const plasma = new THREE.Mesh(plasmaGeo, plasmaMat);
+    plasma.position.set(0, 0.82, 0);
+    root.add(plasma);
 
-    // Upper top hurdle rail at 0.82m
-    const upperBeam = new THREE.Mesh(beamGeo, beamMat);
-    upperBeam.position.set(0, 0.82, 0);
-    root.add(upperBeam);
-
-    // High-visibility glowing Amber/Yellow laser hurdle bar
-    const neonBarGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.15, 0.08, 0.16);
-    const neonBarMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    const neonBar = new THREE.Mesh(neonBarGeo, neonBarMat);
-    neonBar.position.set(0, 0.85, 0);
-    root.add(neonBar);
-
-    // Central hurdle chevron backing plate
-    const plateGeo = new THREE.PlaneGeometry(laneHalfWidth * 1.8, 0.42);
-    const plateMat = new THREE.MeshBasicMaterial({
-      color: 0xff8800,
-      transparent: true,
-      opacity: 0.3,
-      side: THREE.DoubleSide,
-    });
-    const plate = new THREE.Mesh(plateGeo, plateMat);
-    plate.position.set(0, 0.58, 0);
-    root.add(plate);
-
-    // 3 Upward Jump Chevrons (▲ ▲ ▲) - immediate visual affordance for "JUMP OVER"
-    const chevronGeo = new THREE.ConeGeometry(0.14, 0.28, 3);
+    // 6. Upward Jump Chevrons (▲ ▲ ▲)
+    const chevronGeo = new THREE.ConeGeometry(0.12, 0.22, 3);
     const chevronMat = new THREE.MeshBasicMaterial({ color: 0xffdd00 });
-
     for (const xOff of [-0.65, 0, 0.65]) {
-      const chevron = new THREE.Mesh(chevronGeo, chevronMat);
-      chevron.position.set(xOff, 0.58, 0.08);
-      root.add(chevron);
+      const chFront = new THREE.Mesh(chevronGeo, chevronMat);
+      chFront.position.set(xOff, 0.58, 0.08);
+      root.add(chFront);
 
-      const chevronBack = new THREE.Mesh(chevronGeo, chevronMat);
-      chevronBack.position.set(xOff, 0.58, -0.08);
-      root.add(chevronBack);
+      const chBack = new THREE.Mesh(chevronGeo, chevronMat);
+      chBack.position.set(xOff, 0.58, -0.08);
+      root.add(chBack);
     }
 
-    // Ground laser boundary line
-    const groundLineGeo = new THREE.PlaneGeometry(laneHalfWidth * 2, 0.12);
-    const groundLineMat = new THREE.MeshBasicMaterial({
-      color: 0xffaa00,
+    // 7. Ground shadow contact plane
+    const shadowGeo = new THREE.PlaneGeometry(laneHalfWidth * 2.2, 0.6);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
       transparent: true,
-      opacity: 0.6,
-      side: THREE.DoubleSide,
+      opacity: 0.5,
     });
-    const groundLine = new THREE.Mesh(groundLineGeo, groundLineMat);
-    groundLine.rotation.x = -Math.PI / 2;
-    groundLine.position.set(0, 0.02, 0);
-    root.add(groundLine);
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.015;
+    root.add(shadow);
 
     return root;
   }
@@ -134,100 +171,67 @@ export class Obstacle implements IObstacle {
   private createLowBarrierMesh(): THREE.Group {
     const root = new THREE.Group();
     const laneHalfWidth = 1.05;
-    const archHeight = 2.4;
+    const archHeight = 2.45;
 
-    // Tall side upright columns (arch posts)
-    const postGeo = new THREE.BoxGeometry(0.18, archHeight, 0.2);
+    // 1. Heavy industrial upright side columns
+    const postGeo = new THREE.BoxGeometry(0.24, archHeight, 0.28);
     const postMat = new THREE.MeshStandardMaterial({
-      color: 0x16182c,
-      roughness: 0.4,
-      metalness: 0.8,
+      color: 0x161a28,
+      roughness: 0.45,
+      metalness: 0.85,
     });
 
-    const leftCol = new THREE.Mesh(postGeo, postMat);
-    leftCol.position.set(-laneHalfWidth, archHeight / 2, 0);
-    root.add(leftCol);
+    const leftPost = new THREE.Mesh(postGeo, postMat);
+    leftPost.position.set(-laneHalfWidth, archHeight / 2, 0);
+    root.add(leftPost);
 
-    const rightCol = new THREE.Mesh(postGeo, postMat);
-    rightCol.position.set(laneHalfWidth, archHeight / 2, 0);
-    root.add(rightCol);
+    const rightPost = new THREE.Mesh(postGeo, postMat);
+    rightPost.position.set(laneHalfWidth, archHeight / 2, 0);
+    root.add(rightPost);
 
-    // Neon edge stripes on columns
-    const colStripeGeo = new THREE.BoxGeometry(0.04, archHeight, 0.22);
-    const colStripeMat = new THREE.MeshBasicMaterial({ color: 0xff007f });
+    // 2. Heavy overhead scanner gantry housing
+    const headerGeo = new THREE.BoxGeometry(laneHalfWidth * 2 + 0.3, 0.45, 0.35);
+    const header = new THREE.Mesh(headerGeo, postMat);
+    header.position.set(0, archHeight - 0.15, 0);
+    root.add(header);
 
-    const leftColStripe = new THREE.Mesh(colStripeGeo, colStripeMat);
-    leftColStripe.position.set(-laneHalfWidth + 0.08, archHeight / 2, 0);
-    root.add(leftColStripe);
-
-    const rightColStripe = new THREE.Mesh(colStripeGeo, colStripeMat);
-    rightColStripe.position.set(laneHalfWidth - 0.08, archHeight / 2, 0);
-    root.add(rightColStripe);
-
-    // Overhead scanner casing gantry
-    const casingGeo = new THREE.BoxGeometry(laneHalfWidth * 2 + 0.2, 0.48, 0.35);
-    const casingMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0e1c,
-      roughness: 0.3,
-      metalness: 0.9,
-    });
-    const casing = new THREE.Mesh(casingGeo, casingMat);
-    casing.position.set(0, archHeight - 0.24, 0);
-    root.add(casing);
-
-    // Magenta top neon accent on gantry
-    const gantryTrimGeo = new THREE.BoxGeometry(laneHalfWidth * 2 + 0.22, 0.06, 0.38);
-    const gantryTrimMat = new THREE.MeshBasicMaterial({ color: 0xff007f });
-    const gantryTrim = new THREE.Mesh(gantryTrimGeo, gantryTrimMat);
-    gantryTrim.position.set(0, archHeight + 0.02, 0);
-    root.add(gantryTrim);
-
-    // Warning emergency beacons
-    const lightGeo = new THREE.SphereGeometry(0.12, 8, 8);
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-
-    const light1 = new THREE.Mesh(lightGeo, lightMat);
-    light1.position.set(-0.7, archHeight + 0.1, 0);
-    root.add(light1);
-
-    const light2 = new THREE.Mesh(lightGeo, lightMat);
-    light2.position.set(0.7, archHeight + 0.1, 0);
-    root.add(light2);
-
-    // Downward Slide Chevrons (▼ ▼ ▼) on gantry casing - immediate visual affordance for "SLIDE UNDER"
-    const slideChevronGeo = new THREE.ConeGeometry(0.12, 0.22, 3);
-    const slideChevronMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-
-    for (const xOff of [-0.55, 0, 0.55]) {
-      const chevron = new THREE.Mesh(slideChevronGeo, slideChevronMat);
-      chevron.rotation.z = Math.PI; // point downward
-      chevron.position.set(xOff, archHeight - 0.26, 0.19);
-      root.add(chevron);
-
-      const chevronBack = new THREE.Mesh(slideChevronGeo, slideChevronMat);
-      chevronBack.rotation.z = Math.PI;
-      chevronBack.position.set(xOff, archHeight - 0.26, -0.19);
-      root.add(chevronBack);
+    // Strobe warning beacons on top of gantry
+    const beaconGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.14, 8);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    for (const xOff of [-laneHalfWidth, 0, laneHalfWidth]) {
+      const b = new THREE.Mesh(beaconGeo, beaconMat);
+      b.position.set(xOff, archHeight + 0.14, 0);
+      root.add(b);
     }
 
-    // Glowing downward laser scan sheet (leaves clear gap at y: 0 to 0.8m for sliding)
-    const laserSheetGeo = new THREE.PlaneGeometry(laneHalfWidth * 2 - 0.1, 1.25);
-    const laserSheetMat = new THREE.MeshBasicMaterial({
+    // 3. Downward Slide Chevrons (▼ ▼ ▼)
+    const chevronGeo = new THREE.ConeGeometry(0.12, 0.22, 3);
+    const chevronMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    for (const xOff of [-0.6, 0, 0.6]) {
+      const ch = new THREE.Mesh(chevronGeo, chevronMat);
+      ch.rotation.z = Math.PI; // point downward
+      ch.position.set(xOff, archHeight - 0.26, 0.19);
+      root.add(ch);
+    }
+
+    // 4. Downward holographic laser curtain (clearance 0 to 0.82m underneath)
+    const laserGeo = new THREE.PlaneGeometry(laneHalfWidth * 2 - 0.1, 1.25);
+    const laserMat = new THREE.MeshBasicMaterial({
       color: 0xff007f,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.65,
       side: THREE.DoubleSide,
     });
-    const laserSheet = new THREE.Mesh(laserSheetGeo, laserSheetMat);
-    laserSheet.position.set(0, 1.48, 0);
-    root.add(laserSheet);
+    const laser = new THREE.Mesh(laserGeo, laserMat);
+    laser.position.set(0, 1.48, 0);
+    root.add(laser);
 
-    // Laser bottom emitter line at y = 0.82m — razor sharp visual collision floor
-    const emitterGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.1, 0.08, 0.1);
-    const emitterMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-    const emitter = new THREE.Mesh(emitterGeo, emitterMat);
-    emitter.position.set(0, 0.82, 0);
-    root.add(emitter);
+    // Laser bottom emitter rail at Y = 0.82m
+    const railGeo = new THREE.BoxGeometry(laneHalfWidth * 2 - 0.1, 0.08, 0.12);
+    const railMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+    const rail = new THREE.Mesh(railGeo, railMat);
+    rail.position.set(0, 0.82, 0);
+    root.add(rail);
 
     return root;
   }
@@ -237,66 +241,79 @@ export class Obstacle implements IObstacle {
     const width = 2.1;
     const height = 2.5;
 
-    // Heavy reinforced frame (full impassable barricade)
-    const frameGeo = new THREE.BoxGeometry(width, height, 0.35);
-    const frameMat = new THREE.MeshStandardMaterial({
-      color: 0x120810,
-      roughness: 0.4,
-      metalness: 0.85,
+    // 1. Armored chassis with chamfered profile
+    const bodyGeo = new THREE.BoxGeometry(width, height - 0.2, 0.4);
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x141824,
+      roughness: 0.45,
+      metalness: 0.8,
     });
-    const frame = new THREE.Mesh(frameGeo, frameMat);
-    frame.position.y = height / 2;
-    root.add(frame);
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = (height - 0.2) / 2 + 0.1;
+    root.add(body);
 
-    // Danger Red/Crimson Holographic digital barrier face (DISTINCT FROM CYAN COLLECTIBLES!)
-    const holoGeo = new THREE.PlaneGeometry(width * 0.88, height * 0.84);
-    const holoMat = new THREE.MeshBasicMaterial({
-      color: 0xff1744, // Vivid Crimson Danger Red
-      transparent: true,
-      opacity: 0.65,
-      side: THREE.DoubleSide,
-    });
-    const holoFront = new THREE.Mesh(holoGeo, holoMat);
-    holoFront.position.set(0, height / 2, 0.18);
-    root.add(holoFront);
+    // 2. High-contrast hazard caution stripes (Amber/Black) along top & bottom edges
+    const hazardTex = Obstacle.createHazardTexture('#ff9900', '#10131d');
+    const stripeGeo = new THREE.PlaneGeometry(width * 0.95, 0.28);
+    const stripeMat = new THREE.MeshBasicMaterial({ map: hazardTex, side: THREE.DoubleSide });
 
-    const holoBack = new THREE.Mesh(holoGeo, holoMat);
-    holoBack.position.set(0, height / 2, -0.18);
-    root.add(holoBack);
-
-    // Prominent Glowing Hazard Cross / X across the barrier face (unmistakable "BLOCKED" silhouette)
-    const crossBarGeo = new THREE.BoxGeometry(width * 0.9, 0.14, 0.04);
-    const crossMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
-
-    // Diagonal bar 1
-    const cross1 = new THREE.Mesh(crossBarGeo, crossMat);
-    cross1.position.set(0, height / 2, 0.2);
-    cross1.rotation.z = Math.PI / 4;
-    root.add(cross1);
-
-    // Diagonal bar 2
-    const cross2 = new THREE.Mesh(crossBarGeo, crossMat);
-    cross2.position.set(0, height / 2, 0.2);
-    cross2.rotation.z = -Math.PI / 4;
-    root.add(cross2);
-
-    // Top and bottom high-visibility warning border stripes
-    const stripeGeo = new THREE.BoxGeometry(width * 0.95, 0.18, 0.38);
-    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xff3d00 }); // Electric Red-Orange
     const topStripe = new THREE.Mesh(stripeGeo, stripeMat);
-    topStripe.position.set(0, height - 0.15, 0);
+    topStripe.position.set(0, height - 0.28, 0.22);
     root.add(topStripe);
 
     const bottomStripe = new THREE.Mesh(stripeGeo, stripeMat);
-    bottomStripe.position.set(0, 0.18, 0);
+    bottomStripe.position.set(0, 0.28, 0.22);
     root.add(bottomStripe);
 
-    // Top Danger Strobe Beacon
-    const beaconGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.25, 8);
+    // 3. Central crimson emergency barrier face
+    const faceGeo = new THREE.PlaneGeometry(width * 0.88, height * 0.55);
+    const faceMat = new THREE.MeshBasicMaterial({
+      color: 0xff1744,
+      transparent: true,
+      opacity: 0.7,
+      side: THREE.DoubleSide,
+    });
+    const face = new THREE.Mesh(faceGeo, faceMat);
+    face.position.set(0, height / 2, 0.21);
+    root.add(face);
+
+    // Heavy diagonal hazard X brace
+    const crossGeo = new THREE.BoxGeometry(width * 0.75, 0.14, 0.06);
+    const crossMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    const x1 = new THREE.Mesh(crossGeo, crossMat);
+    x1.position.set(0, height / 2, 0.23);
+    x1.rotation.z = Math.PI / 4;
+    root.add(x1);
+
+    const x2 = new THREE.Mesh(crossGeo, crossMat);
+    x2.position.set(0, height / 2, 0.23);
+    x2.rotation.z = -Math.PI / 4;
+    root.add(x2);
+
+    // 4. Dual red emergency warning strobe beacons on top
+    const beaconGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.22, 8);
     const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
-    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
-    beacon.position.set(0, height + 0.12, 0);
-    root.add(beacon);
+
+    const leftBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+    leftBeacon.position.set(-width * 0.42, height + 0.05, 0);
+    root.add(leftBeacon);
+
+    const rightBeacon = new THREE.Mesh(beaconGeo, beaconMat);
+    rightBeacon.position.set(width * 0.42, height + 0.05, 0);
+    root.add(rightBeacon);
+
+    // 5. Heavy ground contact shadow
+    const shadowGeo = new THREE.PlaneGeometry(width * 1.1, 0.8);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.015;
+    root.add(shadow);
 
     return root;
   }
@@ -368,9 +385,9 @@ export class Obstacle implements IObstacle {
         break;
 
       case ObstacleType.LOW_BARRIER:
-        // Overhead laser: spans from y=0.8m to y=2.4m (clearance 0-0.75m underneath)
+        // Overhead laser: spans from y=0.8m to y=2.45m (clearance 0-0.78m underneath for slide)
         this.boundingBox.min.set(pos.x - halfWidth, 0.8, pos.z - 0.25);
-        this.boundingBox.max.set(pos.x + halfWidth, 2.4, pos.z + 0.25);
+        this.boundingBox.max.set(pos.x + halfWidth, 2.45, pos.z + 0.25);
         break;
 
       case ObstacleType.BLOCKADE:

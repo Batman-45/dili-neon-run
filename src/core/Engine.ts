@@ -17,25 +17,25 @@ export class Engine {
   private defaultFov: number;
 
   // Camera Shake, Follow & Base Position
-  public readonly baseCameraPos = new THREE.Vector3(0, 4.2, 7.5);
+  public readonly baseCameraPos = new THREE.Vector3(0, 3.4, 6.6);
   private cameraFollowX: number = 0;
-  private currentBaseFov: number = 60;
+  private currentBaseFov: number = 56;
   private shakeIntensity: number = 0;
   private shakeDuration: number = 0;
   private shakeTimer: number = 0;
 
   constructor(options: EngineOptions) {
     this.canvas = options.canvas;
-    this.defaultFov = options.fov ?? 60;
+    this.defaultFov = options.fov ?? 56;
     this.currentBaseFov = this.defaultFov;
 
-    // 1. Scene with cyberpunk atmosphere
+    // 1. Scene with atmospheric cyber-metropolis depth
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x060715);
-    // Linear fog preserves crisp visibility for incoming obstacles up to 40m while smoothly blending horizon
-    this.scene.fog = new THREE.Fog(0x060715, 40, 165);
+    this.scene.background = new THREE.Color(0x070918);
+    // Linear fog preserves crisp visibility for obstacles up to 50m while softly blending the skyline
+    this.scene.fog = new THREE.Fog(0x070918, 35, 185);
 
-    // 2. Perspective Camera (2.5D Over-the-shoulder runner view)
+    // 2. Perspective Camera (Heroic 3rd-person runner framing)
     const aspect = window.innerWidth / window.innerHeight;
     this.camera = new THREE.PerspectiveCamera(
       this.defaultFov,
@@ -44,7 +44,7 @@ export class Engine {
       options.far ?? 1000
     );
 
-    // 3. WebGLRenderer with high-DPI and tone mapping
+    // 3. WebGLRenderer with high-DPI, soft shadow mapping, and ACES tone mapping
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -55,7 +55,7 @@ export class Engine {
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     this.handleResize();
@@ -64,23 +64,24 @@ export class Engine {
   }
 
   private setupLighting(): void {
-    // Ambient light - deep indigo with calibrated fill
-    const ambient = new THREE.AmbientLight(0x22264c, 2.1);
+    // 1. Natural ambient fill - dark indigo twilight
+    const ambient = new THREE.AmbientLight(0x1a203e, 1.4);
     this.scene.add(ambient);
 
-    // Key directional light - neon cyan from upper right
-    const cyanKey = new THREE.DirectionalLight(0x00f0ff, 2.2);
-    cyanKey.position.set(10, 20, 10);
-    this.scene.add(cyanKey);
+    // 2. Primary directional key light (cool daylight fill from upper-forward right)
+    // Illuminates physical asphalt grain, obstacle bevels, and character depth
+    const keyLight = new THREE.DirectionalLight(0xd4e2ff, 1.85);
+    keyLight.position.set(12, 22, 14);
+    this.scene.add(keyLight);
 
-    // Rim directional light - hot magenta from upper left
-    const magentaRim = new THREE.DirectionalLight(0xff007f, 2.0);
-    magentaRim.position.set(-10, 15, -15);
-    this.scene.add(magentaRim);
+    // 3. Atmospheric hemisphere bounce (cool sky, warm city ground bounce)
+    const hemiLight = new THREE.HemisphereLight(0x223055, 0x140e26, 1.05);
+    this.scene.add(hemiLight);
 
-    // Under-track purple ground glow
-    const groundGlow = new THREE.HemisphereLight(0x00f0ff, 0x9d00ff, 0.85);
-    this.scene.add(groundGlow);
+    // 4. Subtle cyber rim directional light (separates obstacles & character from distant fog)
+    const rimLight = new THREE.DirectionalLight(0x00f0ff, 1.1);
+    rimLight.position.set(-14, 12, -18);
+    this.scene.add(rimLight);
   }
 
   private handleResize(): void {
@@ -90,28 +91,24 @@ export class Engine {
 
     this.camera.aspect = aspect;
 
-    // Responsive framing: Guarantee all 3 lanes are always visible on every viewport
+    // Responsive framing: Dili occupies 18–22% of viewport height on all devices
     if (aspect < 1.0) {
-      // Mobile Portrait (e.g. 390x844, 375x667):
-      // Elevate and pull camera back slightly, and adjust vertical FOV to maintain horizontal coverage
-      this.baseCameraPos.set(0, 5.0, 9.2);
-      const targetHFovRad = (56 * Math.PI) / 180;
-      const vFovRad = 2 * Math.atan(Math.tan(targetHFovRad / 2) / aspect);
-      this.currentBaseFov = Math.min(Math.max((vFovRad * 180) / Math.PI, 68), 84);
-    } else if (aspect < 1.4) {
-      // Tablet / Near-square viewports (4:3, 5:4)
-      this.baseCameraPos.set(0, 4.5, 8.2);
+      // Mobile Portrait (e.g. 390x844, 412x915)
+      this.baseCameraPos.set(0, 3.5, 6.5);
       this.currentBaseFov = 64;
+    } else if (aspect < 1.4) {
+      // Tablet / Square viewports
+      this.baseCameraPos.set(0, 3.45, 6.6);
+      this.currentBaseFov = 59;
     } else {
-      // Desktop / Mobile Landscape (16:9, 19.5:9, 21:9)
-      this.baseCameraPos.set(0, 4.2, 7.5);
+      // Desktop / Landscape (16:9, 1366x768, 1920x1080)
+      this.baseCameraPos.set(0, 3.4, 6.6);
       this.currentBaseFov = this.defaultFov;
     }
 
     this.camera.fov = this.currentBaseFov;
-    this.camera.position.y = this.baseCameraPos.y;
-    this.camera.position.z = this.baseCameraPos.z;
-    this.camera.lookAt(0, 1.4, -18);
+    this.camera.position.set(this.baseCameraPos.x, this.baseCameraPos.y, this.baseCameraPos.z);
+    this.camera.lookAt(0, 1.35, -22);
     this.camera.updateProjectionMatrix();
 
     this.renderer.setSize(width, height, false);
@@ -169,7 +166,7 @@ export class Engine {
       this.camera.position.y = this.baseCameraPos.y;
     }
     this.camera.position.z = this.baseCameraPos.z;
-    this.camera.lookAt(this.cameraFollowX * 0.45, 1.4, -18);
+    this.camera.lookAt(this.cameraFollowX * 0.35, 1.35, -22);
   }
 
   public render(): void {

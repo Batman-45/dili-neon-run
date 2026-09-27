@@ -71,6 +71,10 @@ function initGame(): void {
     },
   });
 
+  // Expose for runtime verification & inspection
+  (window as any).__dili = dili;
+  (window as any).__obstacleManager = obstacleManager;
+
   const collectibleManager = new CollectibleManager(engine.scene, {
     onBitCollected: () => {
       comboSystem.onBitCollected();
@@ -110,6 +114,13 @@ function initGame(): void {
       },
     }
   );
+
+  // Test hook for test harness
+  (window as any).__testCrash = () => stateManager.crash();
+  (window as any).__dili = dili;
+  (window as any).__engine = engine;
+  (window as any).__obstacleManager = obstacleManager;
+  (window as any).__trackManager = trackManager;
 
   // ============================================================
   // 4. GAME STATE MANAGER
@@ -185,6 +196,8 @@ function initGame(): void {
       showScreen('screen-start');
     },
   });
+
+  (window as any).__stateManager = stateManager;
 
   // ============================================================
   // 5. SCREEN MANAGEMENT HELPERS

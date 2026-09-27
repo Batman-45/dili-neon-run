@@ -89,13 +89,28 @@ async function main() {
       await send('Page.enable');
       await send('Runtime.enable');
 
+      // Wait for page ready
+      await evaluate(`new Promise(r => {
+        if (document.readyState === 'complete') r();
+        else window.addEventListener('load', () => r());
+      })`);
+      await new Promise(r => setTimeout(r, 1000));
+
       // Click START RUN
       console.log('Clicking #btn-play...');
       await evaluate(`document.getElementById('btn-play').click();`);
 
-      // Wait for countdown (3 -> 2 -> 1 -> GO! takes ~2.5s)
+      // Wait for countdown (3 -> 2 -> 1 -> GO! takes ~3.2s)
       console.log('Waiting for countdown to finish...');
-      await new Promise(r => setTimeout(r, 3200));
+      for (let i = 0; i < 30; i++) {
+        const hudVisible = await evaluate(`!document.getElementById('hud-overlay').classList.contains('hud-hidden')`);
+        if (hudVisible) {
+          console.log('HUD is active! Gameplay has started.');
+          break;
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+      await new Promise(r => setTimeout(r, 800)); // Let run settle
 
       // 1. Capture Center Lane running
       await capture('gameplay_center_lane.png');
