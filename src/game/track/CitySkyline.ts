@@ -216,6 +216,48 @@ export class CitySkyline {
     return tex;
   }
 
+  private static sharedBuildingMaterial: THREE.MeshStandardMaterial | null = null;
+  private static sharedSpireMaterial: THREE.MeshStandardMaterial | null = null;
+  private static sharedBeaconMaterial: THREE.MeshBasicMaterial | null = null;
+  private static sharedBeaconGeometry: THREE.SphereGeometry | null = null;
+
+  private static getBuildingMaterial(): THREE.MeshStandardMaterial {
+    if (!CitySkyline.sharedBuildingMaterial) {
+      CitySkyline.sharedBuildingMaterial = new THREE.MeshStandardMaterial({
+        map: CitySkyline.getFacadeTexture(),
+        roughness: 0.45,
+        metalness: 0.65,
+        color: 0xdddddd,
+      });
+    }
+    return CitySkyline.sharedBuildingMaterial;
+  }
+
+  private static getSpireMaterial(): THREE.MeshStandardMaterial {
+    if (!CitySkyline.sharedSpireMaterial) {
+      CitySkyline.sharedSpireMaterial = new THREE.MeshStandardMaterial({
+        color: 0x222638,
+        roughness: 0.3,
+        metalness: 0.9,
+      });
+    }
+    return CitySkyline.sharedSpireMaterial;
+  }
+
+  private static getBeaconMaterial(): THREE.MeshBasicMaterial {
+    if (!CitySkyline.sharedBeaconMaterial) {
+      CitySkyline.sharedBeaconMaterial = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+    }
+    return CitySkyline.sharedBeaconMaterial;
+  }
+
+  private static getBeaconGeometry(): THREE.SphereGeometry {
+    if (!CitySkyline.sharedBeaconGeometry) {
+      CitySkyline.sharedBeaconGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+    }
+    return CitySkyline.sharedBeaconGeometry;
+  }
+
   private buildSkyscrapers(): void {
     const buildingCount = 32;
     const depths = [-280, 20];
@@ -237,32 +279,19 @@ export class CitySkyline {
 
       // Building main body
       const geo = new THREE.BoxGeometry(width, height, depth);
-      const mat = new THREE.MeshStandardMaterial({
-        map: CitySkyline.getFacadeTexture(),
-        roughness: 0.45,
-        metalness: 0.65,
-        color: 0xdddddd,
-      });
-      const body = new THREE.Mesh(geo, mat);
+      const body = new THREE.Mesh(geo, CitySkyline.getBuildingMaterial());
       body.position.y = height / 2 - 18; // base grounded at lower deck Y = -18
       bGroup.add(body);
 
       // Rooftop architectural crown / communications spire
       const spireH = 8 + Math.random() * 14;
       const spireGeo = new THREE.CylinderGeometry(0.12, 0.4, spireH, 6);
-      const spireMat = new THREE.MeshStandardMaterial({
-        color: 0x222638,
-        roughness: 0.3,
-        metalness: 0.9,
-      });
-      const spire = new THREE.Mesh(spireGeo, spireMat);
+      const spire = new THREE.Mesh(spireGeo, CitySkyline.getSpireMaterial());
       spire.position.set(0, height - 18 + spireH / 2, 0);
       bGroup.add(spire);
 
-      // Aircraft warning beacon beacon at spire tip
-      const beaconGeo = new THREE.SphereGeometry(0.25, 8, 8);
-      const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
-      const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+      // Aircraft warning beacon at spire tip
+      const beacon = new THREE.Mesh(CitySkyline.getBeaconGeometry(), CitySkyline.getBeaconMaterial());
       beacon.position.set(0, height - 18 + spireH, 0);
       bGroup.add(beacon);
 

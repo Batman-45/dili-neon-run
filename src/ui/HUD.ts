@@ -51,11 +51,29 @@ export class HUD {
   // HUD overlay root
   private hudOverlayEl: HTMLElement | null;
 
+  private distanceTextNode: Text | null = null;
+  private lastDisplayedDistance: number = -1;
+  private lastDisplayedScore: number = -1;
+  private lastDisplayedBits: number = -1;
+  private lastDisplayedCombo: number = -1;
+  private lastDashStatus: string = '';
+  private lastDashPercent: number = -1;
+
   constructor() {
     this.distanceEl = document.getElementById('hud-distance');
     this.scoreEl    = document.getElementById('hud-score');
     this.bitsEl     = document.getElementById('hud-bits');
     this.comboEl    = document.getElementById('hud-combo');
+
+    if (this.distanceEl) {
+      this.distanceEl.textContent = '';
+      this.distanceTextNode = document.createTextNode('0 ');
+      const unitSpan = document.createElement('span');
+      unitSpan.className = 'metric-unit';
+      unitSpan.textContent = 'm';
+      this.distanceEl.appendChild(this.distanceTextNode);
+      this.distanceEl.appendChild(unitSpan);
+    }
 
     this.laneNodes    = document.querySelectorAll('.lane-node');
     this.dashStatusEl = document.getElementById('hud-dash-status');
@@ -90,32 +108,48 @@ export class HUD {
   // =============================================
 
   public updateDistance(meters: number): void {
-    if (this.distanceEl) {
-      this.distanceEl.innerHTML = `${Math.floor(meters)} <span class="metric-unit">m</span>`;
+    const d = Math.floor(meters);
+    if (d !== this.lastDisplayedDistance) {
+      this.lastDisplayedDistance = d;
+      if (this.distanceTextNode) {
+        this.distanceTextNode.nodeValue = `${d} `;
+      } else if (this.distanceEl) {
+        this.distanceEl.innerHTML = `${d} <span class="metric-unit">m</span>`;
+      }
     }
   }
 
   public updateScore(score: number): void {
-    if (this.scoreEl) {
-      this.scoreEl.textContent = Math.floor(score).toLocaleString();
+    const s = Math.floor(score);
+    if (s !== this.lastDisplayedScore) {
+      this.lastDisplayedScore = s;
+      if (this.scoreEl) {
+        this.scoreEl.textContent = s.toLocaleString();
+      }
     }
   }
 
   public updateBits(bits: number): void {
-    if (this.bitsEl) {
-      this.bitsEl.textContent = `${bits}`;
+    if (bits !== this.lastDisplayedBits) {
+      this.lastDisplayedBits = bits;
+      if (this.bitsEl) {
+        this.bitsEl.textContent = `${bits}`;
+      }
     }
   }
 
   public updateCombo(combo: number): void {
-    if (this.comboEl) {
-      this.comboEl.textContent = `${combo.toFixed(1)}x`;
-      if (combo > 1) {
-        this.comboEl.style.color = '#ff007f';
-        this.comboEl.style.textShadow = '0 0 10px rgba(255, 0, 127, 0.6)';
-      } else {
-        this.comboEl.style.color = '#fff';
-        this.comboEl.style.textShadow = 'none';
+    if (combo !== this.lastDisplayedCombo) {
+      this.lastDisplayedCombo = combo;
+      if (this.comboEl) {
+        this.comboEl.textContent = `${combo.toFixed(1)}x`;
+        if (combo > 1) {
+          this.comboEl.style.color = '#ff007f';
+          this.comboEl.style.textShadow = '0 0 10px rgba(255, 0, 127, 0.6)';
+        } else {
+          this.comboEl.style.color = '#fff';
+          this.comboEl.style.textShadow = 'none';
+        }
       }
     }
   }
@@ -135,21 +169,35 @@ export class HUD {
     if (!this.dashStatusEl || !this.dashFillEl) return;
 
     if (isDashing) {
-      this.dashStatusEl.textContent = 'DASHING';
-      this.dashStatusEl.className = 'dash-status active';
-      this.dashFillEl.className = 'dash-bar-fill active';
-      this.dashFillEl.style.width = '100%';
+      if (this.lastDashStatus !== 'DASHING') {
+        this.lastDashStatus = 'DASHING';
+        this.dashStatusEl.textContent = 'DASHING';
+        this.dashStatusEl.className = 'dash-status active';
+        this.dashFillEl.className = 'dash-bar-fill active';
+        this.dashFillEl.style.width = '100%';
+        this.lastDashPercent = 100;
+      }
     } else if (canDash) {
-      this.dashStatusEl.textContent = 'READY';
-      this.dashStatusEl.className = 'dash-status ready';
-      this.dashFillEl.className = 'dash-bar-fill';
-      this.dashFillEl.style.width = '100%';
+      if (this.lastDashStatus !== 'READY') {
+        this.lastDashStatus = 'READY';
+        this.dashStatusEl.textContent = 'READY';
+        this.dashStatusEl.className = 'dash-status ready';
+        this.dashFillEl.className = 'dash-bar-fill';
+        this.dashFillEl.style.width = '100%';
+        this.lastDashPercent = 100;
+      }
     } else {
-      this.dashStatusEl.textContent = 'RECHARGE';
-      this.dashStatusEl.className = 'dash-status cooldown';
-      this.dashFillEl.className = 'dash-bar-fill cooldown';
       const rechargePercent = Math.round((1 - cooldownNorm) * 100);
-      this.dashFillEl.style.width = `${rechargePercent}%`;
+      if (this.lastDashStatus !== 'RECHARGE') {
+        this.lastDashStatus = 'RECHARGE';
+        this.dashStatusEl.textContent = 'RECHARGE';
+        this.dashStatusEl.className = 'dash-status cooldown';
+        this.dashFillEl.className = 'dash-bar-fill cooldown';
+      }
+      if (rechargePercent !== this.lastDashPercent) {
+        this.lastDashPercent = rechargePercent;
+        this.dashFillEl.style.width = `${rechargePercent}%`;
+      }
     }
   }
 
@@ -290,6 +338,13 @@ export class HUD {
   // =============================================
 
   public resetHUD(): void {
+    this.lastDisplayedDistance = -1;
+    this.lastDisplayedScore = -1;
+    this.lastDisplayedBits = -1;
+    this.lastDisplayedCombo = -1;
+    this.lastDashStatus = '';
+    this.lastDashPercent = -1;
+
     this.updateScore(0);
     this.updateBits(0);
     this.updateCombo(1.0);

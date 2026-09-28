@@ -14,6 +14,8 @@ import { DifficultyCurve } from './game/systems/DifficultyCurve';
 import { CollectibleManager } from './game/collectibles/CollectibleManager';
 import { PowerUpSystem } from './game/systems/PowerUpSystem';
 import { PowerUpType } from './game/collectibles/CollectibleTypes';
+import { LeaderboardManager } from './game/leaderboard/LeaderboardManager';
+import { LeaderboardUI } from './ui/LeaderboardUI';
 
 /**
  * Dili: Neon Run — Phase 5: Premium UI + Polish
@@ -30,6 +32,9 @@ function initGame(): void {
   const audio  = new AudioManager();
   const hud    = new HUD();
   const loop   = new GameLoop();
+
+  const leaderboardManager = new LeaderboardManager();
+  const leaderboardUI = new LeaderboardUI(leaderboardManager);
 
   // ============================================================
   // 2. GAME WORLD SYSTEMS
@@ -181,6 +186,15 @@ function initGame(): void {
 
       hud.setStartPersonalBest(comboSystem.personalBest);
 
+      // Check whether this run qualifies for the local Top 10 leaderboard
+      leaderboardUI.checkAndPromptHighScore(
+        Math.floor(comboSystem.score),
+        Math.floor(trackManager.distanceRun),
+        (_rank) => {
+          audio.playNewBest();
+        }
+      );
+
       // Small delay so the crash animation can play before the screen appears
       setTimeout(() => {
         showScreen('screen-gameover');
@@ -264,6 +278,7 @@ function initGame(): void {
     trackManager.speed = 22;
     isDashing = false;
     hud.resetHUD();
+    leaderboardUI.hideHighScorePrompt();
   }
 
   // ============================================================
@@ -346,6 +361,15 @@ function initGame(): void {
   document.getElementById('btn-play')?.addEventListener('click', () => {
     audio.playMenuClick();
     stateManager.startGame();
+  });
+
+  document.getElementById('btn-open-leaderboard')?.addEventListener('click', () => {
+    audio.playMenuClick();
+    showScreen('screen-leaderboard');
+    leaderboardUI.openLeaderboard(() => {
+      audio.playMenuBack();
+      showScreen('screen-start');
+    });
   });
 
   document.getElementById('btn-start-mute')?.addEventListener('click', () => {

@@ -74,6 +74,14 @@
             </span>
           </button>
 
+          <!-- LEADERBOARD Button (Secondary) -->
+          <button id="btn-open-leaderboard" class="btn-leaderboard-hero" type="button">
+            <span class="btn-leaderboard-inner">
+              <span class="btn-leaderboard-icon">🏆</span>
+              <span class="btn-leaderboard-text">LEADERBOARD</span>
+            </span>
+          </button>
+
           <!-- 6. Secondary options & hints -->
           <div class="start-controls-hint">
             <div class="controls-row">
@@ -227,9 +235,72 @@
             <strong class="neon-cyan" id="res-best">0</strong>
           </div>
 
+          <!-- High Score Leaderboard Entry Prompt (shown ONLY if qualified for Top 10) -->
+          <div id="gameover-leaderboard-entry" class="gameover-leaderboard-entry hidden">
+            <div class="leaderboard-entry-badge">🏆 TOP 10 QUALIFIED!</div>
+            <p class="leaderboard-entry-hint">Enter your callsign for the Highway Leaderboard:</p>
+            <div class="leaderboard-input-row">
+              <input
+                type="text"
+                id="leaderboard-player-input"
+                class="cyber-input"
+                maxlength="12"
+                placeholder="Dili Runner"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button id="btn-submit-score" class="cyber-button cyber-button--save" type="button">
+                SAVE
+              </button>
+            </div>
+            <div id="leaderboard-entry-feedback" class="leaderboard-entry-feedback hidden"></div>
+          </div>
+
           <div class="gameover-buttons">
             <button id="btn-restart" class="cyber-button" type="button">↺ PLAY AGAIN</button>
             <button id="btn-gameover-title" class="cyber-button cyber-button--ghost" type="button">⌂ HOME</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================
+           SCREEN 6: LEADERBOARD OVERLAY
+           ============================================= -->
+      <div id="screen-leaderboard" class="game-screen screen-leaderboard">
+        <div class="modal-card leaderboard-card">
+          <div class="leaderboard-header">
+            <div class="leaderboard-badge">HALL OF FAME</div>
+            <h2 class="modal-title">TOP 10 <span class="neon-cyan">LEADERBOARD</span></h2>
+            <p class="leaderboard-subtitle">DLICOM HIGHWAY LOCAL ARCHIVE</p>
+          </div>
+
+          <div class="leaderboard-table-container">
+            <div class="leaderboard-table-header">
+              <span class="col-rank">#</span>
+              <span class="col-name">PLAYER</span>
+              <span class="col-score">SCORE</span>
+              <span class="col-dist">DISTANCE</span>
+            </div>
+            <div id="leaderboard-entries-list" class="leaderboard-entries-list">
+              <!-- Safely populated via textContent in LeaderboardUI -->
+            </div>
+            <div id="leaderboard-empty-state" class="leaderboard-empty-state hidden">
+              No runs recorded yet.
+            </div>
+          </div>
+
+          <div class="leaderboard-footer">
+            <button id="btn-leaderboard-back" class="cyber-button" type="button">◀ BACK</button>
+            <button id="btn-leaderboard-clear-prompt" class="btn-clear-leaderboard" type="button">Clear Local Records</button>
+          </div>
+
+          <!-- Clear confirmation popup -->
+          <div id="leaderboard-clear-confirm" class="leaderboard-clear-confirm hidden">
+            <p class="clear-confirm-text">Clear all local leaderboard records?</p>
+            <div class="clear-confirm-buttons">
+              <button id="btn-clear-cancel" class="cyber-button cyber-button--ghost" type="button">CANCEL</button>
+              <button id="btn-clear-confirm" class="cyber-button btn-danger-cyber" type="button">CLEAR</button>
+            </div>
           </div>
         </div>
       </div>

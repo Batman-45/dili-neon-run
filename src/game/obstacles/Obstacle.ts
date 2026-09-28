@@ -67,6 +67,23 @@ export class Obstacle implements IObstacle {
     return tex;
   }
 
+  private static sharedHighBarrierHazardTex: THREE.CanvasTexture | null = null;
+  private static sharedBlockadeHazardTex: THREE.CanvasTexture | null = null;
+
+  private static getHighBarrierHazardTexture(): THREE.CanvasTexture {
+    if (!Obstacle.sharedHighBarrierHazardTex) {
+      Obstacle.sharedHighBarrierHazardTex = Obstacle.createHazardTexture('#ff9900', '#111420');
+    }
+    return Obstacle.sharedHighBarrierHazardTex;
+  }
+
+  private static getBlockadeHazardTexture(): THREE.CanvasTexture {
+    if (!Obstacle.sharedBlockadeHazardTex) {
+      Obstacle.sharedBlockadeHazardTex = Obstacle.createHazardTexture('#ff9900', '#10131d');
+    }
+    return Obstacle.sharedBlockadeHazardTex;
+  }
+
   private createHighBarrierMesh(): THREE.Group {
     const root = new THREE.Group();
     const laneHalfWidth = 1.05;
@@ -89,7 +106,7 @@ export class Obstacle implements IObstacle {
 
     // 2. Upright support pillars with hazard stripes
     const postGeo = new THREE.BoxGeometry(0.18, 0.72, 0.2);
-    const hazardTex = Obstacle.createHazardTexture('#ff9900', '#111420');
+    const hazardTex = Obstacle.getHighBarrierHazardTexture();
     const postMat = new THREE.MeshStandardMaterial({
       map: hazardTex,
       roughness: 0.4,
@@ -253,7 +270,7 @@ export class Obstacle implements IObstacle {
     root.add(body);
 
     // 2. High-contrast hazard caution stripes (Amber/Black) along top & bottom edges
-    const hazardTex = Obstacle.createHazardTexture('#ff9900', '#10131d');
+    const hazardTex = Obstacle.getBlockadeHazardTexture();
     const stripeGeo = new THREE.PlaneGeometry(width * 0.95, 0.28);
     const stripeMat = new THREE.MeshBasicMaterial({ map: hazardTex, side: THREE.DoubleSide });
 

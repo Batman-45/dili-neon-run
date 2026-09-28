@@ -8,6 +8,7 @@ export class ObstacleManager {
   public readonly group: THREE.Group;
   private pool: Obstacle[] = [];
   private readonly poolSize: number = 24;
+  private readonly activeObstacles: Obstacle[] = [];
 
   private spawnZCursor: number = -120;
   private minSpawnDistanceAhead: number = 130; // Spawns safely far ahead
@@ -26,7 +27,8 @@ export class ObstacleManager {
   }
 
   public update(delta: number, forwardDistance: number, distanceRun: number): void {
-    // 1. Move all active obstacles forward with track scrolling
+    // 1. Move all active obstacles forward with track scrolling and collect active list without allocating arrays
+    this.activeObstacles.length = 0;
     for (const obs of this.pool) {
       if (obs.active) {
         obs.update(delta, forwardDistance);
@@ -34,6 +36,8 @@ export class ObstacleManager {
         // Recycle if passed behind the camera
         if (obs.group.position.z > 25) {
           obs.recycle();
+        } else {
+          this.activeObstacles.push(obs);
         }
       }
     }
@@ -103,13 +107,14 @@ export class ObstacleManager {
   }
 
   public getActiveObstacles(): Obstacle[] {
-    return this.pool.filter((obs) => obs.active);
+    return this.activeObstacles;
   }
 
   public reset(): void {
     for (const obs of this.pool) {
       obs.recycle();
     }
+    this.activeObstacles.length = 0;
     this.spawnZCursor = -120;
     this.nextPatternDistance = 35; // Initial breathing room
   }
