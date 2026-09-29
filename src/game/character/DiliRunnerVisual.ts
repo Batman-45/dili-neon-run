@@ -77,12 +77,12 @@ export class DiliRunnerVisual implements ICharacterVisual {
       map: this.texture,
       transparent: true,
       alphaTest: 0.02,
-      roughness: 0.82,
+      roughness: 0.45,
       metalness: 0.02,
       // Subtle emissive preserves official Dili purple color vibrancy in dark neon city
       emissive: new THREE.Color(0x2d1028),
       emissiveMap: this.texture,
-      emissiveIntensity: 0.25,
+      emissiveIntensity: 0.10,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -112,11 +112,11 @@ export class DiliRunnerVisual implements ICharacterVisual {
       transparent: true,
       alphaTest: 0.02,
       opacity: 1,
-      roughness: 0.82,
+      roughness: 0.45,
       metalness: 0.02,
       emissive: new THREE.Color(0x2d1028),
       emissiveMap: this.slideTexture,
-      emissiveIntensity: 0.25,
+      emissiveIntensity: 0.10,
       side: THREE.DoubleSide,
       depthWrite: false,
     });

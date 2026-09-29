@@ -18,7 +18,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -42,6 +42,12 @@
 
         <!-- Content card -->
         <div class="start-content">
+          <!-- Sector Eyebrow Badge -->
+          <div class="brand-eyebrow">
+            <span class="dot"></span>
+            <span>DLICOM METROPOLIS // SECTOR 07</span>
+          </div>
+
           <!-- 1. DILI -->
           <div class="start-brand">
             <h1 class="logo-dili-hero">DILI</h1>
@@ -49,8 +55,10 @@
 
           <!-- 2. Large Character Presentation -->
           <div class="start-character-hero" aria-label="Dili character">
+            <div class="char-backdrop-glow"></div>
             <div class="char-pedestal-glow"></div>
             <div class="char-hologram-rings"></div>
+            <div class="char-hologram-ring-inner"></div>
             <img src="/assets/dili.png" alt="Dili Mascot" class="start-char-mascot-img" />
           </div>
 
@@ -66,19 +74,19 @@
             <span class="start-best-value neon-cyan" id="start-best-score">---</span>
           </div>
 
-          <!-- 5. PLAY Button -->
-          <button id="btn-play" class="btn-play-hero" type="button">
+          <!-- 5. PLAY Button (Machined Cyber Island CTA) -->
+          <button id="btn-play" class="btn-play-hero" type="button" aria-label="Start Run">
             <span class="btn-play-inner">
-              <span class="btn-play-icon">▶</span>
               <span class="btn-play-text">START RUN</span>
+              <span class="btn-play-icon">▶</span>
             </span>
           </button>
 
           <!-- LEADERBOARD Button (Secondary) -->
-          <button id="btn-open-leaderboard" class="btn-leaderboard-hero" type="button">
+          <button id="btn-open-leaderboard" class="btn-leaderboard-hero" type="button" aria-label="Open Highway Leaderboard">
             <span class="btn-leaderboard-inner">
               <span class="btn-leaderboard-icon">🏆</span>
-              <span class="btn-leaderboard-text">LEADERBOARD</span>
+              <span class="btn-leaderboard-text">HIGHWAY LEADERBOARD</span>
             </span>
           </button>
 
@@ -113,61 +121,68 @@
            ============================================= -->
       <div id="hud-overlay" class="hud-hidden">
 
-        <!-- Near Miss Toast Event -->
+        <!-- Near Miss Toast Event (Anchored in upper third, non-blocking) -->
         <div id="near-miss-banner" class="near-miss-banner">
           <span class="near-miss-text">⚡ NEAR MISS!</span>
           <span class="near-miss-combo" id="near-miss-combo-tag">+150 [2x]</span>
         </div>
 
-        <!-- Top HUD bar (Compact floating glass pills) -->
-        <header class="hud-top">
-          <div class="hud-brand-pill">
-            <span class="zone-badge">ZONE</span>
-            <span class="zone-name neon-cyan">SECTOR 07</span>
+        <!-- Top Telemetry Cockpit Pod (Height: ~44-48px, Zero Horizon Intrusion) -->
+        <header class="hud-top hud-top-bar">
+          <!-- Zone Identification Capsule -->
+          <div class="hud-sector-pod hud-brand-pill">
+            <span class="hud-sector-label zone-badge">ZONE</span>
+            <span class="hud-sector-title zone-name neon-cyan">SECTOR 07</span>
           </div>
 
-          <div class="hud-metrics">
-            <div class="metric-card score-card">
-              <div class="metric-label">SCORE</div>
-              <div class="metric-value neon-cyan" id="hud-score">0</div>
+          <!-- Central Telemetry Pod (Tabular Numerics & Laser Dividers) -->
+          <div class="hud-telemetry-pod hud-metrics">
+            <div class="hud-metric-cell metric-card score-card">
+              <span class="hud-metric-label metric-label">SCORE</span>
+              <span class="hud-metric-val score metric-value neon-cyan" id="hud-score">0</span>
             </div>
-            <div class="metric-card dist-card">
-              <div class="metric-label">DIST</div>
-              <div class="metric-value" id="hud-distance">0 <span class="metric-unit">m</span></div>
+            <div class="hud-telemetry-sep"></div>
+            <div class="hud-metric-cell metric-card dist-card">
+              <span class="hud-metric-label metric-label">DIST</span>
+              <span class="hud-metric-val metric-value" id="hud-distance">0 <span class="metric-unit">m</span></span>
             </div>
-            <div class="metric-card bits-card">
-              <div class="metric-label">⬡ BITS</div>
-              <div class="metric-value neon-pink" id="hud-bits">0</div>
+            <div class="hud-telemetry-sep"></div>
+            <div class="hud-metric-cell metric-card bits-card">
+              <span class="hud-metric-label metric-label">BITS</span>
+              <span class="hud-metric-val bits metric-value neon-pink" id="hud-bits">0</span>
             </div>
-            <div class="metric-card combo-card">
-              <div class="metric-label">COMBO</div>
-              <div class="metric-value" id="hud-combo">1.0x</div>
+            <div class="hud-telemetry-sep"></div>
+            <div class="hud-metric-cell metric-card combo-card">
+              <span class="hud-metric-label metric-label">COMBO</span>
+              <span class="hud-metric-val combo metric-value" id="hud-combo">1.0x</span>
             </div>
           </div>
 
-          <!-- Pause button -->
-          <button id="btn-pause" class="btn-pause-hud" type="button" aria-label="Pause">⏸</button>
+          <!-- Cockpit Pause Control -->
+          <button id="btn-pause" class="hud-pause-btn btn-pause-hud" type="button" aria-label="Pause">⏸</button>
         </header>
 
-        <!-- Mid HUD: Power-Up & Dash -->
-        <div class="hud-mid-row">
-          <!-- Active Power-Up Banner -->
-          <div class="hud-powerup-badge hidden" id="hud-powerup-badge">
-            <div class="powerup-icon" id="hud-powerup-icon">⚡</div>
-            <div class="powerup-info">
-              <div class="powerup-name" id="hud-powerup-name">PHASE SHIELD</div>
-              <div class="powerup-bar-track">
-                <div class="powerup-bar-fill" id="hud-powerup-fill" style="width: 100%;"></div>
+        <!-- Active Power-Up Tactical Capsule (Compact, Below Top Pod, Clears Horizon) -->
+        <div class="hud-mid-area">
+          <div class="hud-powerup-capsule hud-powerup-badge hidden" id="hud-powerup-badge">
+            <span class="powerup-ico powerup-icon" id="hud-powerup-icon">⚡</span>
+            <div class="powerup-meta powerup-info">
+              <div class="powerup-title powerup-name" id="hud-powerup-name">PHASE SHIELD</div>
+              <div class="powerup-progress powerup-bar-track">
+                <div class="powerup-fill powerup-bar-fill" id="hud-powerup-fill" style="width: 100%;"></div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="hud-dash-meter">
-            <div class="dash-meta">
-              <span class="dash-label">HYPER DASH</span>
-              <span class="dash-status ready" id="hud-dash-status">READY</span>
+        <!-- Bottom Tactical Capacitor (Docked in Bottom-Right Corner, Clears Lane) -->
+        <div class="hud-bottom-bar">
+          <div class="hud-dash-capacitor hud-dash-meter">
+            <div class="dash-header-row dash-meta">
+              <span class="dash-caption dash-label">HYPER DASH</span>
+              <span class="dash-status-pill dash-status ready" id="hud-dash-status">READY</span>
             </div>
-            <div class="dash-bar-track">
+            <div class="dash-cells-meter dash-bar-track">
               <div class="dash-bar-fill" id="hud-dash-fill" style="width: 100%;"></div>
             </div>
           </div>
@@ -178,21 +193,23 @@
            SCREEN 4: PAUSE OVERLAY
            ============================================= -->
       <div id="screen-pause" class="game-screen screen-pause">
-        <div class="pause-card">
-          <div class="pause-badge">PAUSED</div>
-          <h2 class="pause-title">RUN <span class="neon-cyan">HALTED</span></h2>
-          <p class="pause-subtitle">DLICOM HIGHWAY — SECTOR 7</p>
+        <div class="pause-card modal-panel">
+          <div class="pause-card-inner modal-panel-inner">
+            <div class="modal-tag tag-cyan pause-badge">RUN INTERRUPTED // SECTOR 07</div>
+            <h2 class="modal-title pause-title">RUN <span class="neon-cyan">PAUSED</span></h2>
+            <p class="pause-subtitle">DLICOM HIGHWAY // SECTOR 07</p>
 
-          <div class="pause-buttons">
-            <button id="btn-resume" class="cyber-button btn-resume" type="button">▶ RESUME</button>
-            <button id="btn-pause-restart" class="cyber-button cyber-button--secondary" type="button">↺ RESTART</button>
-            <button id="btn-title" class="cyber-button cyber-button--ghost" type="button">⌂ TITLE</button>
-          </div>
+            <div class="pause-buttons">
+              <button id="btn-resume" class="cyber-button btn-resume" type="button">▶ RESUME RUN</button>
+              <button id="btn-pause-restart" class="cyber-button cyber-button--secondary" type="button">↺ RESTART RUN</button>
+              <button id="btn-title" class="cyber-button cyber-button--ghost" type="button">⌂ TITLE MENU</button>
+            </div>
 
-          <div class="pause-mute-row">
-            <button id="btn-pause-mute" class="btn-icon-mute" type="button" aria-label="Toggle sound">
-              <span id="pause-mute-icon">🔊</span> SOUND
-            </button>
+            <div class="pause-mute-row">
+              <button id="btn-pause-mute" class="btn-icon-mute" type="button" aria-label="Toggle sound">
+                <span id="pause-mute-icon">🔊</span> SOUND
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -201,64 +218,70 @@
            SCREEN 5: GAME OVER / RESULTS
            ============================================= -->
       <div id="screen-gameover" class="game-screen screen-gameover">
-        <div class="modal-card gameover-card">
-          <div class="new-best-badge hidden" id="new-best-badge">🏆 NEW PERSONAL BEST!</div>
+        <div class="modal-card gameover-card modal-panel">
+          <div class="gameover-card-inner modal-panel-inner">
+            <div class="modal-tag tag-amber new-best-badge hidden" id="new-best-badge">🏆 NEW PERSONAL BEST!</div>
 
-          <h2 class="modal-title">GAME <span class="neon-pink">OVER</span></h2>
-
-          <div class="results-hero">
-            <div class="result-hero-label">FINAL SCORE</div>
-            <div class="result-hero-value neon-cyan" id="res-score">0</div>
-          </div>
-
-          <div class="results-grid">
-            <div class="result-box">
-              <span class="result-label">DISTANCE</span>
-              <span class="result-value" id="res-distance">0 m</span>
+            <div class="modal-header-group">
+              <h2 class="modal-title">RUN <span class="neon-pink">TERMINATED</span></h2>
+              <p class="modal-subtitle">SECTOR 07 // RUN DEBRIEF</p>
             </div>
-            <div class="result-box">
-              <span class="result-label">⬡ BITS</span>
-              <span class="result-value neon-cyan" id="res-bits">0</span>
-            </div>
-            <div class="result-box">
-              <span class="result-label">NEAR MISSES</span>
-              <span class="result-value neon-pink" id="res-near-misses">0</span>
-            </div>
-            <div class="result-box">
-              <span class="result-label">MAX COMBO</span>
-              <span class="result-value" id="res-max-combo">1.0x</span>
-            </div>
-          </div>
 
-          <div class="best-score-row">
-            <span>BEST SCORE:</span>
-            <strong class="neon-cyan" id="res-best">0</strong>
-          </div>
-
-          <!-- High Score Leaderboard Entry Prompt (shown ONLY if qualified for Top 10) -->
-          <div id="gameover-leaderboard-entry" class="gameover-leaderboard-entry hidden">
-            <div class="leaderboard-entry-badge">🏆 TOP 10 QUALIFIED!</div>
-            <p class="leaderboard-entry-hint">Enter your callsign for the Highway Leaderboard:</p>
-            <div class="leaderboard-input-row">
-              <input
-                type="text"
-                id="leaderboard-player-input"
-                class="cyber-input"
-                maxlength="12"
-                placeholder="Dili Runner"
-                autocomplete="off"
-                spellcheck="false"
-              />
-              <button id="btn-submit-score" class="cyber-button cyber-button--save" type="button">
-                SAVE
-              </button>
+            <div class="score-hero-box results-hero">
+              <span class="score-hero-label result-hero-label">FINAL SCORE</span>
+              <span class="score-hero-digits result-hero-value neon-cyan" id="res-score">0</span>
             </div>
-            <div id="leaderboard-entry-feedback" class="leaderboard-entry-feedback hidden"></div>
-          </div>
 
-          <div class="gameover-buttons">
-            <button id="btn-restart" class="cyber-button" type="button">↺ PLAY AGAIN</button>
-            <button id="btn-gameover-title" class="cyber-button cyber-button--ghost" type="button">⌂ HOME</button>
+            <div class="telemetry-grid-4 results-grid">
+              <div class="telemetry-tile result-box">
+                <span class="tile-label result-label">DISTANCE</span>
+                <span class="tile-val result-value" id="res-distance">0 m</span>
+              </div>
+              <div class="telemetry-tile result-box">
+                <span class="tile-label result-label">⬡ BITS</span>
+                <span class="tile-val result-value neon-pink" id="res-bits">0</span>
+              </div>
+              <div class="telemetry-tile result-box">
+                <span class="tile-label result-label">NEAR MISSES</span>
+                <span class="tile-val result-value neon-mint" id="res-near-misses">0</span>
+              </div>
+              <div class="telemetry-tile result-box">
+                <span class="tile-label result-label">MAX COMBO</span>
+                <span class="tile-val result-value neon-amber" id="res-max-combo">1.0x</span>
+              </div>
+            </div>
+
+            <div class="best-score-row">
+              <span class="best-label">PERSONAL RECORD:</span>
+              <strong class="neon-cyan" id="res-best">0</strong>
+            </div>
+
+            <!-- High Score Leaderboard Entry Prompt (shown ONLY if qualified for Top 10) -->
+            <div id="gameover-leaderboard-entry" class="gameover-leaderboard-entry callsign-input-box hidden">
+              <div class="leaderboard-entry-badge">⭐ TOP 10 QUALIFIED!</div>
+              <p class="leaderboard-entry-hint">Enter your callsign for the Highway Leaderboard:</p>
+              <div class="leaderboard-input-row input-row">
+                <input
+                  type="text"
+                  id="leaderboard-player-input"
+                  class="cyber-input"
+                  maxlength="12"
+                  placeholder="Dili Runner"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-label="Callsign for leaderboard"
+                />
+                <button id="btn-submit-score" class="cyber-button cyber-button--save btn-save-record" type="button" aria-label="Save callsign to leaderboard">
+                  SAVE
+                </button>
+              </div>
+              <div id="leaderboard-entry-feedback" class="leaderboard-entry-feedback hidden"></div>
+            </div>
+
+            <div class="gameover-buttons modal-actions-row">
+              <button id="btn-restart" class="cyber-button modal-btn primary" type="button">↺ PLAY AGAIN</button>
+              <button id="btn-gameover-title" class="cyber-button cyber-button--ghost modal-btn ghost" type="button">⌂ TITLE</button>
+            </div>
           </div>
         </div>
       </div>
@@ -267,39 +290,41 @@
            SCREEN 6: LEADERBOARD OVERLAY
            ============================================= -->
       <div id="screen-leaderboard" class="game-screen screen-leaderboard">
-        <div class="modal-card leaderboard-card">
-          <div class="leaderboard-header">
-            <div class="leaderboard-badge">HALL OF FAME</div>
-            <h2 class="modal-title">TOP 10 <span class="neon-cyan">LEADERBOARD</span></h2>
-            <p class="leaderboard-subtitle">DLICOM HIGHWAY LOCAL ARCHIVE</p>
-          </div>
-
-          <div class="leaderboard-table-container">
-            <div class="leaderboard-table-header">
-              <span class="col-rank">#</span>
-              <span class="col-name">PLAYER</span>
-              <span class="col-score">SCORE</span>
-              <span class="col-dist">DISTANCE</span>
+        <div class="modal-card leaderboard-card modal-panel">
+          <div class="leaderboard-card-inner modal-panel-inner">
+            <div class="leaderboard-header">
+              <div class="modal-tag tag-cyan leaderboard-badge">DLICOM HIGHWAY ARCHIVE</div>
+              <h2 class="modal-title">TOP 10 <span class="neon-cyan">LEADERBOARD</span></h2>
+              <p class="leaderboard-subtitle">METROPOLIS LOCAL HIGH SCORES</p>
             </div>
-            <div id="leaderboard-entries-list" class="leaderboard-entries-list">
-              <!-- Safely populated via textContent in LeaderboardUI -->
-            </div>
-            <div id="leaderboard-empty-state" class="leaderboard-empty-state hidden">
-              No runs recorded yet.
-            </div>
-          </div>
 
-          <div class="leaderboard-footer">
-            <button id="btn-leaderboard-back" class="cyber-button" type="button">◀ BACK</button>
-            <button id="btn-leaderboard-clear-prompt" class="btn-clear-leaderboard" type="button">Clear Local Records</button>
-          </div>
+            <div class="leaderboard-table-container">
+              <div class="leaderboard-table-header">
+                <span class="col-rank">#</span>
+                <span class="col-name">PILOT</span>
+                <span class="col-score">SCORE</span>
+                <span class="col-dist">DISTANCE</span>
+              </div>
+              <div id="leaderboard-entries-list" class="leaderboard-entries-list">
+                <!-- Safely populated via textContent in LeaderboardUI -->
+              </div>
+              <div id="leaderboard-empty-state" class="leaderboard-empty-state hidden">
+                No runs recorded yet.
+              </div>
+            </div>
 
-          <!-- Clear confirmation popup -->
-          <div id="leaderboard-clear-confirm" class="leaderboard-clear-confirm hidden">
-            <p class="clear-confirm-text">Clear all local leaderboard records?</p>
-            <div class="clear-confirm-buttons">
-              <button id="btn-clear-cancel" class="cyber-button cyber-button--ghost" type="button">CANCEL</button>
-              <button id="btn-clear-confirm" class="cyber-button btn-danger-cyber" type="button">CLEAR</button>
+            <div class="leaderboard-footer">
+              <button id="btn-leaderboard-back" class="cyber-button modal-btn primary" type="button">◀ BACK</button>
+              <button id="btn-leaderboard-clear-prompt" class="btn-clear-leaderboard" type="button" aria-label="Clear local high score records">Clear Local Records</button>
+            </div>
+
+            <!-- Clear confirmation popup -->
+            <div id="leaderboard-clear-confirm" class="leaderboard-clear-confirm hidden">
+              <p class="clear-confirm-text">Clear all local leaderboard records?</p>
+              <div class="clear-confirm-buttons">
+                <button id="btn-clear-cancel" class="cyber-button cyber-button--ghost modal-btn ghost" type="button" aria-label="Cancel clear records">CANCEL</button>
+                <button id="btn-clear-confirm" class="cyber-button btn-danger-cyber" type="button" aria-label="Confirm clear records">CLEAR</button>
+              </div>
             </div>
           </div>
         </div>

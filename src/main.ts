@@ -495,6 +495,7 @@ function initGame(): void {
   setTimeout(() => audio.startAmbientLoop(), 200);
 
   console.log('⚡ Dili: Neon Run — Phase 5: Premium UI + Polish active.');
+  (window as any).__diliGame = { powerUpSystem, dili, hud, stateManager, leaderboardUI };
 }
 
 window.addEventListener('DOMContentLoaded', initGame);
