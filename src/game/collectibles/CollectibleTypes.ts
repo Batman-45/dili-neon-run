@@ -31,37 +31,63 @@ export interface PowerUpConfig {
   type: PowerUpType;
   duration: number;
   label: string;
+  pickupAnnouncement: string;
+  icon: string;
   colorHex: number;
   colorCss: string;
+  accentHex: number;
+}
+
+export interface ActivePowerUpStatus {
+  type: PowerUpType;
+  label: string;
+  icon: string;
+  remaining: number;
+  total: number;
+  colorCss: string;
+  isShield?: boolean;
 }
 
 export const POWER_UP_CONFIGS: Record<PowerUpType, PowerUpConfig> = {
   [PowerUpType.SHIELD]: {
     type: PowerUpType.SHIELD,
     duration: 6.0,
-    label: 'PHASE SHIELD',
+    label: 'SHIELD',
+    pickupAnnouncement: 'SHIELD!',
+    icon: '🛡️',
     colorHex: 0x00f0ff,
     colorCss: '#00f0ff',
+    accentHex: 0x00a8ff,
   },
   [PowerUpType.MAGNET]: {
     type: PowerUpType.MAGNET,
     duration: 8.0,
-    label: 'PULSE MAGNET',
+    label: 'MAGNET',
+    pickupAnnouncement: 'MAGNET!',
+    icon: '🧲',
     colorHex: 0xff007f,
     colorCss: '#ff007f',
+    accentHex: 0xff33aa,
   },
   [PowerUpType.BOOST]: {
     type: PowerUpType.BOOST,
-    duration: 4.2,
-    label: 'HYPER BOOST',
+    duration: 5.0,
+    label: 'HYPER',
+    pickupAnnouncement: 'HYPER BOOST!',
+    icon: '⚡',
     colorHex: 0xffaa00,
     colorCss: '#ffaa00',
+    accentHex: 0xffe600,
   },
   [PowerUpType.MULTIPLIER]: {
     type: PowerUpType.MULTIPLIER,
-    duration: 7.0,
-    label: '2X MULTIPLIER',
-    colorHex: 0x9d00ff,
-    colorCss: '#9d00ff',
+    duration: 8.0,
+    label: '2× SCORE',
+    pickupAnnouncement: '2× SCORE!',
+    icon: '2×',
+    colorHex: 0xb53cff,
+    colorCss: '#b53cff',
+    accentHex: 0xffd700,
   },
 };
+

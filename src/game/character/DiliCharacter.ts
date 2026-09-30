@@ -63,6 +63,9 @@ export class DiliCharacter {
   // Callbacks
   private callbacks: DiliCharacterCallbacks;
   private shieldMesh: THREE.Group;
+  private magnetMesh: THREE.Group;
+  private boostMesh: THREE.Group;
+  private vfxAnimTime: number = 0;
 
   constructor(scene: THREE.Scene, callbacks: DiliCharacterCallbacks = {}, visualOverride?: ICharacterVisual) {
     this.callbacks = callbacks;
@@ -77,6 +80,14 @@ export class DiliCharacter {
     this.shieldMesh = this.createShieldMesh();
     this.group.add(this.shieldMesh);
 
+    // Pulse Magnet visual mesh
+    this.magnetMesh = this.createMagnetVfxMesh();
+    this.group.add(this.magnetMesh);
+
+    // Hyper Boost speed trails visual mesh
+    this.boostMesh = this.createHyperBoostVfxMesh();
+    this.group.add(this.boostMesh);
+
     this.group.position.set(0, this.groundY, 0);
     this.updateBoundingBox();
   }
@@ -84,14 +95,14 @@ export class DiliCharacter {
   private createShieldMesh(): THREE.Group {
     const root = new THREE.Group();
     root.visible = false;
-    root.position.set(0, 1.0, 0);
+    root.position.set(0, 0.95, 0);
 
-    // 1. Crystal-clear outer holographic bubble (ultra-transparent so Dili is fully visible)
+    // 1. Clearly visible holographic protective bubble (cyan)
     const shellGeo = new THREE.SphereGeometry(1.35, 24, 18);
     const shellMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.26,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
       depthWrite: false,
@@ -100,25 +111,26 @@ export class DiliCharacter {
     shell.name = 'shieldShell';
     root.add(shell);
 
-    // 2. Soft violet secondary rim resonance
-    const innerGeo = new THREE.SphereGeometry(1.3, 20, 16);
-    const innerMat = new THREE.MeshBasicMaterial({
-      color: 0x9d00ff,
+    // 2. Hexagonal energy shimmer / wireframe outer ring lattice
+    const wireGeo = new THREE.IcosahedronGeometry(1.36, 1);
+    const wireMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      wireframe: true,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.22,
       blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
       depthWrite: false,
     });
-    const inner = new THREE.Mesh(innerGeo, innerMat);
-    root.add(inner);
+    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    wireMesh.name = 'shieldWire';
+    root.add(wireMesh);
 
     // 3. Orbital energy arc ring A (cyan plasma loop)
-    const ringGeoA = new THREE.TorusGeometry(1.38, 0.016, 8, 48);
+    const ringGeoA = new THREE.TorusGeometry(1.40, 0.022, 8, 48);
     const ringMatA = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -128,12 +140,12 @@ export class DiliCharacter {
     ringA.rotation.y = Math.PI / 6;
     root.add(ringA);
 
-    // 4. Orbital energy arc ring B (magenta plasma loop)
-    const ringGeoB = new THREE.TorusGeometry(1.36, 0.014, 8, 48);
+    // 4. Orbital energy arc ring B (electric blue/cyan loop)
+    const ringGeoB = new THREE.TorusGeometry(1.38, 0.020, 8, 48);
     const ringMatB = new THREE.MeshBasicMaterial({
-      color: 0xff007f,
+      color: 0x00a8ff,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.75,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -144,26 +156,145 @@ export class DiliCharacter {
     root.add(ringB);
 
     // 5. Soft ground energy contact projection on road surface
-    const groundDiscGeo = new THREE.RingGeometry(0.8, 1.3, 24);
+    const groundDiscGeo = new THREE.RingGeometry(0.7, 1.35, 24);
     const groundDiscMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.45,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
     const groundDisc = new THREE.Mesh(groundDiscGeo, groundDiscMat);
     groundDisc.rotation.x = -Math.PI / 2;
-    groundDisc.position.y = -0.98; // contacts road at groundY = 0
+    groundDisc.position.y = -0.93; // contacts road at groundY = 0
     groundDisc.name = 'groundDisc';
     root.add(groundDisc);
 
     return root;
   }
 
+  private createMagnetVfxMesh(): THREE.Group {
+    const root = new THREE.Group();
+    root.visible = false;
+    root.position.set(0, 0.85, 0);
+
+    // Expanding horizontal magnetic ripple rings (magenta)
+    for (let i = 0; i < 2; i++) {
+      const ringGeo = new THREE.RingGeometry(0.75, 0.95, 24);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xff007f,
+        transparent: true,
+        opacity: 0.55,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.name = `magRing${i}`;
+      root.add(ringMesh);
+    }
+
+    // Orbiting magnetic flux orbs around Dili
+    for (let i = 0; i < 2; i++) {
+      const sparkGeo = new THREE.OctahedronGeometry(0.12, 0);
+      const sparkMat = new THREE.MeshBasicMaterial({
+        color: 0xff33aa,
+        blending: THREE.AdditiveBlending,
+      });
+      const spark = new THREE.Mesh(sparkGeo, sparkMat);
+      spark.name = `magSpark${i}`;
+      root.add(spark);
+    }
+
+    // Ground magnetic flux circle
+    const groundGeo = new THREE.RingGeometry(0.5, 1.2, 24);
+    const groundMat = new THREE.MeshBasicMaterial({
+      color: 0xff007f,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.position.y = -0.83;
+    root.add(groundMesh);
+
+    return root;
+  }
+
+  private createHyperBoostVfxMesh(): THREE.Group {
+    const root = new THREE.Group();
+    root.visible = false;
+    root.position.set(0, 0.5, 0);
+
+    // Dual amber speed plumes trailing backwards along +Z
+    const plumeGeo = new THREE.PlaneGeometry(0.38, 2.4);
+    plumeGeo.translate(0, 1.2, 0);
+    const plumeMat = new THREE.MeshBasicMaterial({
+      color: 0xffaa00,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    const leftPlume = new THREE.Mesh(plumeGeo, plumeMat);
+    leftPlume.name = 'leftPlume';
+    leftPlume.rotation.x = Math.PI / 2;
+    leftPlume.position.set(-0.25, 0.2, 0.2);
+    root.add(leftPlume);
+
+    const rightPlume = new THREE.Mesh(plumeGeo, plumeMat.clone());
+    rightPlume.name = 'rightPlume';
+    rightPlume.rotation.x = Math.PI / 2;
+    rightPlume.position.set(0.25, 0.2, 0.2);
+    root.add(rightPlume);
+
+    // Trailing speed chevrons pulsing backwards behind Dili
+    const chevronShape = new THREE.Shape();
+    chevronShape.moveTo(-0.35, 0.18);
+    chevronShape.lineTo(0.0, -0.18);
+    chevronShape.lineTo(0.35, 0.18);
+    chevronShape.lineTo(0.35, 0.05);
+    chevronShape.lineTo(0.0, -0.30);
+    chevronShape.lineTo(-0.35, 0.05);
+    chevronShape.closePath();
+    const chevronGeo = new THREE.ShapeGeometry(chevronShape);
+    const chevronMat = new THREE.MeshBasicMaterial({
+      color: 0xffe600,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    for (let i = 0; i < 2; i++) {
+      const ch = new THREE.Mesh(chevronGeo, chevronMat);
+      ch.name = `boostChevron${i}`;
+      ch.rotation.x = Math.PI / 2;
+      ch.position.set(0, 0.35, 0.6 + i * 0.8);
+      root.add(ch);
+    }
+
+    return root;
+  }
+
   public setShieldVisible(visible: boolean): void {
     this.shieldMesh.visible = visible;
+  }
+
+  public setMagnetVisible(visible: boolean): void {
+    this.magnetMesh.visible = visible;
+  }
+
+  public setHyperBoostVisible(visible: boolean): void {
+    this.boostMesh.visible = visible;
   }
 
   public update(delta: number, currentTrackSpeed: number): void {
@@ -220,13 +351,59 @@ export class DiliCharacter {
     // 6. Update visual avatar animation
     this.visual.update(delta, currentTrackSpeed);
 
-    // 7. Update shield energy rings & subtle field rotation
+    this.vfxAnimTime += delta;
+
+    // 7. Update shield energy rings, shimmer & subtle field rotation
     if (this.shieldMesh.visible) {
       const ringA = this.shieldMesh.getObjectByName('ringA');
       const ringB = this.shieldMesh.getObjectByName('ringB');
+      const wire = this.shieldMesh.getObjectByName('shieldWire');
+      const shell = this.shieldMesh.getObjectByName('shieldShell');
       if (ringA) ringA.rotation.y += delta * 2.8;
       if (ringB) ringB.rotation.z -= delta * 2.2;
+      if (wire) wire.rotation.y -= delta * 1.2;
+      if (shell) {
+        const pulse = 1.0 + Math.sin(this.vfxAnimTime * 6) * 0.035;
+        shell.scale.set(pulse, pulse, pulse);
+      }
       this.shieldMesh.rotation.y += delta * 0.6;
+    }
+
+    // Magnet pulse VFX
+    if (this.magnetMesh.visible) {
+      for (let i = 0; i < 2; i++) {
+        const ring = this.magnetMesh.getObjectByName(`magRing${i}`);
+        if (ring instanceof THREE.Mesh && ring.material instanceof THREE.MeshBasicMaterial) {
+          const t = (this.vfxAnimTime * 2.5 + i * 0.5) % 1.0;
+          const s = 0.6 + t * 0.9;
+          ring.scale.set(s, s, s);
+          ring.material.opacity = Math.max(0, (1 - t) * 0.65);
+        }
+        const spark = this.magnetMesh.getObjectByName(`magSpark${i}`);
+        if (spark) {
+          const angle = this.vfxAnimTime * 6 + (i * Math.PI);
+          spark.position.set(Math.cos(angle) * 0.85, 0.1 + Math.sin(this.vfxAnimTime * 8) * 0.15, Math.sin(angle) * 0.85);
+          spark.rotation.y += delta * 8;
+        }
+      }
+    }
+
+    // Hyper Boost speed trails VFX
+    if (this.boostMesh.visible) {
+      const leftPlume = this.boostMesh.getObjectByName('leftPlume');
+      const rightPlume = this.boostMesh.getObjectByName('rightPlume');
+      const flicker = 0.85 + Math.random() * 0.3;
+      if (leftPlume) leftPlume.scale.set(flicker, 1.0 + Math.random() * 0.4, 1.0);
+      if (rightPlume) rightPlume.scale.set(flicker, 1.0 + Math.random() * 0.4, 1.0);
+
+      for (let i = 0; i < 2; i++) {
+        const ch = this.boostMesh.getObjectByName(`boostChevron${i}`);
+        if (ch instanceof THREE.Mesh && ch.material instanceof THREE.MeshBasicMaterial) {
+          const zProgress = ((this.vfxAnimTime * 4.5 + i * 0.8) % 2.0);
+          ch.position.z = 0.5 + zProgress;
+          ch.material.opacity = Math.max(0, 1.0 - zProgress / 2.0);
+        }
+      }
     }
 
     // 8. Update collision hitbox
@@ -355,6 +532,8 @@ export class DiliCharacter {
     this.isInvulnerable = false;
     this.isSwitchingLane = false;
     this.setShieldVisible(false);
+    this.setMagnetVisible(false);
+    this.setHyperBoostVisible(false);
     this.transitionTo(CharacterState.RUNNING);
     this.visual.reset();
     this.updateBoundingBox();

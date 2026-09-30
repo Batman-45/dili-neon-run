@@ -125,22 +125,34 @@ export class Engine {
 
   public kickFov(targetFov: number, duration: number): void {
     gsap.killTweensOf(this.camera);
-    const boostedFov = Math.max(targetFov, this.currentBaseFov + 10);
-    gsap.to(this.camera, {
-      fov: boostedFov,
-      duration: 0.15,
-      ease: 'power2.out',
-      onUpdate: () => this.camera.updateProjectionMatrix(),
-      onComplete: () => {
-        gsap.to(this.camera, {
-          fov: this.currentBaseFov,
-          duration: Math.max(duration - 0.15, 0.25),
-          ease: 'power2.inOut',
-          onUpdate: () => this.camera.updateProjectionMatrix(),
-        });
-      },
-    });
+    const boostedFov = Math.max(targetFov, this.currentBaseFov + 8);
+    const holdTime = Math.max(0, duration - 0.5);
+
+    gsap.timeline()
+      .to(this.camera, {
+        fov: boostedFov,
+        duration: 0.18,
+        ease: 'power2.out',
+        onUpdate: () => this.camera.updateProjectionMatrix(),
+      })
+      .to(this.camera, {
+        fov: boostedFov,
+        duration: holdTime,
+      })
+      .to(this.camera, {
+        fov: this.currentBaseFov,
+        duration: 0.42,
+        ease: 'power2.inOut',
+        onUpdate: () => this.camera.updateProjectionMatrix(),
+      });
   }
+
+  public resetFov(): void {
+    gsap.killTweensOf(this.camera);
+    this.camera.fov = this.currentBaseFov;
+    this.camera.updateProjectionMatrix();
+  }
+
 
   public shake(intensity: number, duration: number): void {
     this.shakeIntensity = intensity;

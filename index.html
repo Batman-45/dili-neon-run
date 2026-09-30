@@ -117,9 +117,20 @@
       </div>
 
       <!-- =============================================
+           SPEED LINES OVERLAY (HYPER BOOST)
+           ============================================= -->
+      <div id="speed-lines-overlay" class="speed-lines-overlay hidden" aria-hidden="true"></div>
+
+      <!-- =============================================
            SCREEN 3: GAMEPLAY HUD
            ============================================= -->
       <div id="hud-overlay" class="hud-hidden">
+
+        <!-- Power-up Pickup Announcement Banner (Punch/Scale Animation, 0.8-1.2s) -->
+        <div id="powerup-pickup-banner" class="powerup-pickup-banner hidden" aria-live="polite">
+          <span id="pickup-banner-icon" class="pickup-banner-icon">⚡</span>
+          <span id="pickup-banner-text" class="pickup-banner-text">HYPER BOOST!</span>
+        </div>
 
         <!-- Near Miss Toast Event (Anchored in upper third, non-blocking) -->
         <div id="near-miss-banner" class="near-miss-banner">
@@ -141,6 +152,13 @@
               <span class="hud-metric-label metric-label">SCORE</span>
               <span class="hud-metric-val score metric-value neon-cyan" id="hud-score">0</span>
             </div>
+
+            <!-- Prominent Score Multiplier Badge (Unmistakable 2x/3x indicator near score/combo) -->
+            <div id="hud-multiplier-badge" class="hud-multiplier-badge hidden" title="Score Multiplier Active">
+              <span class="mult-badge-value" id="hud-multiplier-val">2×</span>
+              <span class="mult-badge-label">SCORE</span>
+            </div>
+
             <div class="hud-telemetry-sep"></div>
             <div class="hud-metric-cell metric-card dist-card">
               <span class="hud-metric-label metric-label">DIST</span>
@@ -162,17 +180,9 @@
           <button id="btn-pause" class="hud-pause-btn btn-pause-hud" type="button" aria-label="Pause">⏸</button>
         </header>
 
-        <!-- Active Power-Up Tactical Capsule (Compact, Below Top Pod, Clears Horizon) -->
-        <div class="hud-mid-area">
-          <div class="hud-powerup-capsule hud-powerup-badge hidden" id="hud-powerup-badge">
-            <span class="powerup-ico powerup-icon" id="hud-powerup-icon">⚡</span>
-            <div class="powerup-meta powerup-info">
-              <div class="powerup-title powerup-name" id="hud-powerup-name">PHASE SHIELD</div>
-              <div class="powerup-progress powerup-bar-track">
-                <div class="powerup-fill powerup-bar-fill" id="hud-powerup-fill" style="width: 100%;"></div>
-              </div>
-            </div>
-          </div>
+        <!-- Active Power-Ups Stack (Subway Surfers style compact HUD indicators) -->
+        <div class="hud-powerup-container" id="hud-powerup-container">
+          <!-- Populated dynamically via HUD.ts -->
         </div>
 
         <!-- Bottom Tactical Capacitor (Docked in Bottom-Right Corner, Clears Lane) -->

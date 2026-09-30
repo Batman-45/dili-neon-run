@@ -1,4 +1,4 @@
-import { PowerUpType, POWER_UP_CONFIGS } from '../collectibles/CollectibleTypes';
+import { PowerUpType, POWER_UP_CONFIGS, type ActivePowerUpStatus } from '../collectibles/CollectibleTypes';
 
 export interface PowerUpCallbacks {
   onShieldActivated?: () => void;
@@ -82,56 +82,62 @@ export class PowerUpSystem {
     }
   }
 
-  public getActivePowerUp(): {
-    type: PowerUpType;
-    label: string;
-    remaining: number;
-    total: number;
-    colorCss: string;
-  } | null {
-    // Return the most urgent active timed power-up, or shield if active
+  public getActivePowerUps(): ActivePowerUpStatus[] {
+    const list: ActivePowerUpStatus[] = [];
+
+    if (this.shieldActive) {
+      list.push({
+        type: PowerUpType.SHIELD,
+        label: POWER_UP_CONFIGS[PowerUpType.SHIELD].label,
+        icon: POWER_UP_CONFIGS[PowerUpType.SHIELD].icon,
+        remaining: 1,
+        total: 1,
+        colorCss: POWER_UP_CONFIGS[PowerUpType.SHIELD].colorCss,
+        isShield: true,
+      });
+    }
+
     if (this.boostTimer > 0) {
-      return {
+      list.push({
         type: PowerUpType.BOOST,
         label: POWER_UP_CONFIGS[PowerUpType.BOOST].label,
+        icon: POWER_UP_CONFIGS[PowerUpType.BOOST].icon,
         remaining: this.boostTimer,
         total: POWER_UP_CONFIGS[PowerUpType.BOOST].duration,
         colorCss: POWER_UP_CONFIGS[PowerUpType.BOOST].colorCss,
-      };
-    }
-
-    if (this.shieldActive) {
-      return {
-        type: PowerUpType.SHIELD,
-        label: POWER_UP_CONFIGS[PowerUpType.SHIELD].label,
-        remaining: 6.0,
-        total: 6.0,
-        colorCss: POWER_UP_CONFIGS[PowerUpType.SHIELD].colorCss,
-      };
+      });
     }
 
     if (this.magnetTimer > 0) {
-      return {
+      list.push({
         type: PowerUpType.MAGNET,
         label: POWER_UP_CONFIGS[PowerUpType.MAGNET].label,
+        icon: POWER_UP_CONFIGS[PowerUpType.MAGNET].icon,
         remaining: this.magnetTimer,
         total: POWER_UP_CONFIGS[PowerUpType.MAGNET].duration,
         colorCss: POWER_UP_CONFIGS[PowerUpType.MAGNET].colorCss,
-      };
+      });
     }
 
     if (this.multiplierTimer > 0) {
-      return {
+      list.push({
         type: PowerUpType.MULTIPLIER,
         label: POWER_UP_CONFIGS[PowerUpType.MULTIPLIER].label,
+        icon: POWER_UP_CONFIGS[PowerUpType.MULTIPLIER].icon,
         remaining: this.multiplierTimer,
         total: POWER_UP_CONFIGS[PowerUpType.MULTIPLIER].duration,
         colorCss: POWER_UP_CONFIGS[PowerUpType.MULTIPLIER].colorCss,
-      };
+      });
     }
 
-    return null;
+    return list;
   }
+
+  public getActivePowerUp(): ActivePowerUpStatus | null {
+    const active = this.getActivePowerUps();
+    return active.length > 0 ? active[0] : null;
+  }
+
 
   public reset(): void {
     if (this.shieldActive) {

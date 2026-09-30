@@ -92,17 +92,47 @@ export class NeonBit implements ICollectible {
     this.updateBoundingBox();
   }
 
-  public attractToward(targetPos: THREE.Vector3, delta: number, speed: number = 18): void {
+  public isAttracted: boolean = false;
+  private attractTime: number = 0;
+
+  public attractToward(targetPos: THREE.Vector3, delta: number, speed: number = 22): void {
     if (!this.active || this.collected) return;
 
-    // Lerp towards target position
+    this.isAttracted = true;
+    this.attractTime += delta;
+
     const pos = this.group.position;
-    pos.x += (targetPos.x - pos.x) * Math.min(delta * speed, 1);
-    pos.y += (targetPos.y + 0.6 - pos.y) * Math.min(delta * speed, 1);
-    pos.z += (targetPos.z - pos.z) * Math.min(delta * speed, 1);
+    const targetY = targetPos.y + 0.65;
+
+    // Vector to target
+    const dx = targetPos.x - pos.x;
+    const dy = targetY - pos.y;
+    const dz = targetPos.z - pos.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (dist < 0.05) return;
+
+    // Magnetic acceleration curve - pulls faster as it gets closer
+    const pullSpeed = Math.min(speed * (1.2 + 1.8 / (dist + 0.6)), 40);
+
+    // Add lateral magnetic curvature: bit swoops in an arc before straightening out
+    const curveSign = Math.sign(pos.x - targetPos.x) || 1;
+    const curveFactor = Math.sin(Math.min(dist / 6, Math.PI)) * 3.5 * curveSign;
+
+    pos.x += (dx + curveFactor * 0.15) * Math.min(delta * pullSpeed * 0.8, 1);
+    pos.y += dy * Math.min(delta * pullSpeed, 1);
+    pos.z += dz * Math.min(delta * pullSpeed, 1);
+
+    // Magnetic spin acceleration and flight orientation
+    this.mesh.rotation.y += 12 * delta;
+    this.mesh.rotation.z = -dx * 0.5;
+
+    // Pulse core to hot magenta magnetic color
+    (this.coreMesh.material as THREE.MeshBasicMaterial).color.setHex(0xff00aa);
 
     this.updateBoundingBox();
   }
+
 
   public collect(): void {
     if (this.collected) return;
@@ -126,9 +156,13 @@ export class NeonBit implements ICollectible {
     gsap.killTweensOf(this.group.scale);
     this.active = false;
     this.collected = false;
+    this.isAttracted = false;
+    this.attractTime = 0;
+    (this.coreMesh.material as THREE.MeshBasicMaterial).color.setHex(0xff007f);
     this.group.visible = false;
     this.group.position.set(0, -50, 0);
   }
+
 
   private updateBoundingBox(): void {
     const pos = this.group.position;

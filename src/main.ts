@@ -13,7 +13,7 @@ import { CollisionSystem } from './game/systems/CollisionSystem';
 import { DifficultyCurve } from './game/systems/DifficultyCurve';
 import { CollectibleManager } from './game/collectibles/CollectibleManager';
 import { PowerUpSystem } from './game/systems/PowerUpSystem';
-import { PowerUpType } from './game/collectibles/CollectibleTypes';
+import { PowerUpType, POWER_UP_CONFIGS } from './game/collectibles/CollectibleTypes';
 import { LeaderboardManager } from './game/leaderboard/LeaderboardManager';
 import { LeaderboardUI } from './ui/LeaderboardUI';
 
@@ -58,8 +58,13 @@ function initGame(): void {
     onBoostActivated: (duration) => {
       audio.playBoostActivate();
       engine.kickFov(74, duration);
+      dili.setHyperBoostVisible(true);
+      hud.setSpeedLinesActive(true);
     },
-    onBoostEnded: () => {},
+    onBoostEnded: () => {
+      dili.setHyperBoostVisible(false);
+      hud.setSpeedLinesActive(false);
+    },
   });
 
   const dili = new DiliCharacter(engine.scene, {
@@ -88,10 +93,23 @@ function initGame(): void {
     },
     onPowerUpCollected: (type) => {
       powerUpSystem.activate(type);
+      const config = POWER_UP_CONFIGS[type];
+      hud.showPickupAnnouncement(config.pickupAnnouncement, config.icon, config.colorCss);
+
       switch (type) {
-        case PowerUpType.MAGNET:      audio.playMagnetActivate();     break;
-        case PowerUpType.BOOST:       /* played via onBoostActivated */ break;
-        case PowerUpType.MULTIPLIER:  audio.playMultiplierActivate(); break;
+        case PowerUpType.SHIELD:
+          // Audio played via onShieldActivated
+          break;
+        case PowerUpType.MAGNET:
+          audio.playMagnetActivate();
+          dili.setMagnetVisible(true);
+          break;
+        case PowerUpType.BOOST:
+          /* Audio and visuals triggered via onBoostActivated */
+          break;
+        case PowerUpType.MULTIPLIER:
+          audio.playMultiplierActivate();
+          break;
         default: break;
       }
     },
@@ -277,6 +295,7 @@ function initGame(): void {
     trackManager.distanceRun = 0;
     trackManager.speed = 22;
     isDashing = false;
+    engine.resetFov();
     hud.resetHUD();
     leaderboardUI.hideHighScorePrompt();
   }
@@ -438,6 +457,11 @@ function initGame(): void {
       powerUpSystem.update(delta);
       comboSystem.powerUpMultiplier = powerUpSystem.isMultiplierActive() ? 2 : 1;
 
+      // Synchronize active power-up visual effects on character
+      dili.setMagnetVisible(powerUpSystem.isMagnetActive());
+      dili.setHyperBoostVisible(powerUpSystem.isBoostActive());
+      hud.setSpeedLinesActive(powerUpSystem.isBoostActive());
+
       trackManager.update(delta);
       citySkyline.update(delta, trackManager.speed);
 
@@ -462,7 +486,8 @@ function initGame(): void {
       hud.updateScore(comboSystem.score);
       hud.updateBits(comboSystem.bitsCollected);
       hud.updateCombo(comboSystem.getEffectiveMultiplier());
-      hud.updatePowerUp(powerUpSystem.getActivePowerUp());
+      hud.updateMultiplierBadge(comboSystem.getEffectiveMultiplier(), powerUpSystem.isMultiplierActive());
+      hud.updatePowerUps(powerUpSystem.getActivePowerUps());
       hud.updateDashGauge(
         dili.getDashCooldownNormalized(),
         dili.getState() === CharacterState.DASHING,
@@ -495,7 +520,30 @@ function initGame(): void {
   setTimeout(() => audio.startAmbientLoop(), 200);
 
   console.log('⚡ Dili: Neon Run — Phase 5: Premium UI + Polish active.');
-  (window as any).__diliGame = { powerUpSystem, dili, hud, stateManager, leaderboardUI };
+  (window as any).__diliGame = { powerUpSystem, dili, hud, stateManager, leaderboardUI, engine, collectibleManager };
+  (window as any).__collectibleManager = collectibleManager;
+  (window as any).__spawnPowerUp = (type: PowerUpType, lane: -1 | 0 | 1 = 0, z: number = -15) => {
+    // Borrow an item from pool and place it at (lane, z) relative to player
+    const pool = (collectibleManager as any).powerUpPool;
+    for (const item of pool) {
+      if (!item.active) {
+        item.spawn(type, lane, dili.group.position.z + z);
+        return item;
+      }
+    }
+  };
+  (window as any).__givePowerUp = (type: PowerUpType) => {
+    powerUpSystem.activate(type);
+    const config = POWER_UP_CONFIGS[type];
+    hud.showPickupAnnouncement(config.pickupAnnouncement, config.icon, config.colorCss);
+    if (type === PowerUpType.BOOST) {
+      engine.kickFov(74, config.duration);
+      dili.setHyperBoostVisible(true);
+      hud.setSpeedLinesActive(true);
+    } else if (type === PowerUpType.MAGNET) {
+      dili.setMagnetVisible(true);
+    }
+  };
 }
 
 window.addEventListener('DOMContentLoaded', initGame);

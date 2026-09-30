@@ -1,11 +1,9 @@
 import type { LaneIndex } from '../game/character/DiliCharacter';
-import type { PowerUpType } from '../game/collectibles/CollectibleTypes';
+import type { ActivePowerUpStatus } from '../game/collectibles/CollectibleTypes';
 
 /**
  * HUD — manages all DOM overlays for Dili: Neon Run.
- * Phase 5: FPS removed, speed removed, state badge removed from top bar.
- * Manages: gameplay HUD, near-miss toast, and populates result values for the
- * game-over screen (shown/hidden via GameStateManager → main.ts).
+ * Phase 5: Premium UI + Polish + Subway Surfers clarity power-up feedback.
  */
 export class HUD {
   // Gameplay HUD metrics
@@ -14,6 +12,10 @@ export class HUD {
   private bitsEl: HTMLElement | null;
   private comboEl: HTMLElement | null;
 
+  // Prominent Score Multiplier Badge (near score/combo)
+  private multiplierBadgeEl: HTMLElement | null;
+  private multiplierValEl: HTMLElement | null;
+
   // Lane indicator
   private laneNodes: NodeListOf<HTMLElement>;
 
@@ -21,11 +23,17 @@ export class HUD {
   private dashStatusEl: HTMLElement | null;
   private dashFillEl: HTMLElement | null;
 
-  // Active Power-Up badge
-  private powerUpBadgeEl: HTMLElement | null;
-  private powerUpIconEl: HTMLElement | null;
-  private powerUpNameEl: HTMLElement | null;
-  private powerUpFillEl: HTMLElement | null;
+  // Power-up pickup announcement banner (0.8-1.2s punch/scale)
+  private pickupBannerEl: HTMLElement | null;
+  private pickupIconEl: HTMLElement | null;
+  private pickupTextEl: HTMLElement | null;
+  private pickupTimeoutId: number = 0;
+
+  // Hyper Boost full-screen speed-lines overlay
+  private speedLinesOverlayEl: HTMLElement | null;
+
+  // Active Power-Ups Stack container (Subway Surfers multi-boost indicator)
+  private powerupContainerEl: HTMLElement | null;
 
   // Near-miss banner
   private nearMissBanner: HTMLElement | null;
@@ -65,6 +73,16 @@ export class HUD {
     this.bitsEl     = document.getElementById('hud-bits');
     this.comboEl    = document.getElementById('hud-combo');
 
+    this.multiplierBadgeEl = document.getElementById('hud-multiplier-badge');
+    this.multiplierValEl   = document.getElementById('hud-multiplier-val');
+
+    this.pickupBannerEl    = document.getElementById('powerup-pickup-banner');
+    this.pickupIconEl      = document.getElementById('pickup-banner-icon');
+    this.pickupTextEl      = document.getElementById('pickup-banner-text');
+
+    this.speedLinesOverlayEl = document.getElementById('speed-lines-overlay');
+    this.powerupContainerEl  = document.getElementById('hud-powerup-container');
+
     if (this.distanceEl) {
       this.distanceEl.textContent = '';
       this.distanceTextNode = document.createTextNode('0 ');
@@ -78,11 +96,6 @@ export class HUD {
     this.laneNodes    = document.querySelectorAll('.lane-node');
     this.dashStatusEl = document.getElementById('hud-dash-status');
     this.dashFillEl   = document.getElementById('hud-dash-fill');
-
-    this.powerUpBadgeEl = document.getElementById('hud-powerup-badge');
-    this.powerUpIconEl  = document.getElementById('hud-powerup-icon');
-    this.powerUpNameEl  = document.getElementById('hud-powerup-name');
-    this.powerUpFillEl  = document.getElementById('hud-powerup-fill');
 
     this.nearMissBanner    = document.getElementById('near-miss-banner');
     this.nearMissComboTag  = document.getElementById('near-miss-combo-tag');
@@ -102,6 +115,7 @@ export class HUD {
 
     this.hudOverlayEl = document.getElementById('hud-overlay');
   }
+
 
   // =============================================
   // GAMEPLAY HUD UPDATES
@@ -201,42 +215,129 @@ export class HUD {
     }
   }
 
-  public updatePowerUp(
-    info: {
-      type: PowerUpType;
-      label: string;
-      remaining: number;
-      total: number;
-      colorCss: string;
-    } | null
-  ): void {
-    if (!this.powerUpBadgeEl || !this.powerUpIconEl || !this.powerUpNameEl || !this.powerUpFillEl) {
-      return;
+  // =============================================
+  // SCORE MULTIPLIER BADGE (Near score/combo area)
+  // =============================================
+
+  public updateMultiplierBadge(multiplierValue: number, isPowerUpActive: boolean): void {
+    if (!this.multiplierBadgeEl || !this.multiplierValEl) return;
+
+    if (isPowerUpActive || multiplierValue > 1) {
+      const displayVal = isPowerUpActive ? '2×' : `${multiplierValue.toFixed(0)}×`;
+      this.multiplierValEl.textContent = displayVal;
+      this.multiplierBadgeEl.classList.remove('hidden');
+    } else {
+      this.multiplierBadgeEl.classList.add('hidden');
     }
-
-    if (!info) {
-      this.powerUpBadgeEl.classList.add('hidden');
-      return;
-    }
-
-    this.powerUpBadgeEl.classList.remove('hidden');
-    this.powerUpBadgeEl.style.borderColor = info.colorCss;
-    this.powerUpBadgeEl.style.boxShadow = `0 0 16px ${info.colorCss}66`;
-
-    this.powerUpNameEl.textContent = `${info.label} (${info.remaining.toFixed(1)}s)`;
-    this.powerUpFillEl.style.background = info.colorCss;
-
-    const percent = Math.max(0, Math.min(100, (info.remaining / info.total) * 100));
-    this.powerUpFillEl.style.width = `${percent}%`;
-
-    const iconMap: Record<string, string> = {
-      SHIELD: '🛡️',
-      MAGNET: '🧲',
-      BOOST: '⚡',
-      MULTIPLIER: '✨',
-    };
-    this.powerUpIconEl.textContent = iconMap[info.type] ?? '⚡';
   }
+
+  // =============================================
+  // POWER-UP PICKUP ANNOUNCEMENT (0.8-1.2s Punch Toast)
+  // =============================================
+
+  public showPickupAnnouncement(announcement: string, icon: string, colorCss: string): void {
+    if (!this.pickupBannerEl || !this.pickupTextEl) return;
+
+    if (this.pickupIconEl) this.pickupIconEl.textContent = icon;
+    this.pickupTextEl.textContent = announcement;
+    this.pickupBannerEl.style.borderColor = colorCss;
+    this.pickupBannerEl.style.boxShadow = `0 0 24px ${colorCss}99, inset 0 0 12px ${colorCss}44`;
+    this.pickupBannerEl.style.color = colorCss;
+
+    this.pickupBannerEl.classList.remove('hidden');
+    this.pickupBannerEl.classList.remove('punch');
+    // Force DOM reflow to restart keyframe punch animation
+    void this.pickupBannerEl.offsetWidth;
+    this.pickupBannerEl.classList.add('punch');
+
+    if (this.pickupTimeoutId) {
+      clearTimeout(this.pickupTimeoutId);
+    }
+    this.pickupTimeoutId = window.setTimeout(() => {
+      this.pickupBannerEl?.classList.remove('punch');
+      this.pickupBannerEl?.classList.add('hidden');
+      this.pickupTimeoutId = 0;
+    }, 1000);
+  }
+
+  // =============================================
+  // HYPER BOOST SPEED-LINES OVERLAY
+  // =============================================
+
+  public setSpeedLinesActive(active: boolean): void {
+    if (!this.speedLinesOverlayEl) return;
+    if (active) {
+      this.speedLinesOverlayEl.classList.remove('hidden');
+    } else {
+      this.speedLinesOverlayEl.classList.add('hidden');
+    }
+  }
+
+  // =============================================
+  // ACTIVE POWER-UP STACK (Subway Surfers Multi-Boost Indicator)
+  // =============================================
+
+  private currentActivePowerUpTypes: string = '';
+
+  public updatePowerUps(activeList: ActivePowerUpStatus[]): void {
+    if (!this.powerupContainerEl) return;
+
+    if (!activeList || activeList.length === 0) {
+      if (this.currentActivePowerUpTypes !== '') {
+        this.currentActivePowerUpTypes = '';
+        this.powerupContainerEl.innerHTML = '';
+        this.powerupContainerEl.classList.add('hidden');
+      }
+      return;
+    }
+
+    this.powerupContainerEl.classList.remove('hidden');
+
+    const typeKey = activeList.map(item => item.type).join(',');
+
+    // Rebuild DOM rows only when the set of active power-ups changes
+    if (this.currentActivePowerUpTypes !== typeKey) {
+      this.currentActivePowerUpTypes = typeKey;
+      this.powerupContainerEl.innerHTML = activeList.map((item) => `
+        <div class="hud-powerup-row" id="powerup-row-${item.type}" style="--boost-color: ${item.colorCss}; border-color: ${item.colorCss}">
+          <div class="hud-powerup-icon-badge" style="background: ${item.colorCss}22; text-shadow: 0 0 8px ${item.colorCss}">
+            ${item.icon}
+          </div>
+          <div class="hud-powerup-body">
+            <div class="hud-powerup-header">
+              <span class="hud-powerup-name" style="color: ${item.colorCss}">${item.label}</span>
+              <span class="hud-powerup-time" id="powerup-time-${item.type}"></span>
+            </div>
+            <div class="hud-powerup-track">
+              <div class="hud-powerup-fill" id="powerup-fill-${item.type}" style="background: ${item.colorCss}; box-shadow: 0 0 10px ${item.colorCss}"></div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Smoothly update countdown values & fill widths every frame without destroying DOM
+    for (const item of activeList) {
+      const timeEl = document.getElementById(`powerup-time-${item.type}`);
+      const fillEl = document.getElementById(`powerup-fill-${item.type}`);
+      const percent = item.isShield
+        ? 100
+        : Math.max(0, Math.min(100, (item.remaining / item.total) * 100));
+      const timeStr = item.isShield ? 'ACTIVE' : `${item.remaining.toFixed(1)}s`;
+
+      if (timeEl && timeEl.textContent !== timeStr) {
+        timeEl.textContent = timeStr;
+      }
+      if (fillEl) {
+        fillEl.style.width = `${percent}%`;
+      }
+    }
+  }
+
+  public updatePowerUp(info: ActivePowerUpStatus | null): void {
+    this.updatePowerUps(info ? [info] : []);
+  }
+
 
   // =============================================
   // NEAR-MISS TOAST
@@ -350,7 +451,14 @@ export class HUD {
     this.updateCombo(1.0);
     this.updateDistance(0);
     this.updateLane(0);
-    this.updatePowerUp(null);
+    this.updatePowerUps([]);
+    this.updateMultiplierBadge(1, false);
+    this.setSpeedLinesActive(false);
+    if (this.pickupTimeoutId) {
+      clearTimeout(this.pickupTimeoutId);
+      this.pickupTimeoutId = 0;
+    }
+    this.pickupBannerEl?.classList.add('hidden');
     this.updateDashGauge(0, false, true);
   }
 }
